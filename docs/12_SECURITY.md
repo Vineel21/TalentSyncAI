@@ -24,9 +24,11 @@
 
 - The configured Gemini model is `gemini-3.6-flash`.
 - Candidate-data calls require a billing-enabled Gemini API project. Unpaid access is limited to synthetic development checks because Google instructs developers not to submit personal, sensitive, or confidential information to unpaid services.
-- The resume upload UI discloses Gemini processing and requires a fresh 18-or-older affirmation and candidate acknowledgement for each selected file.
-- The API persists the consent version and timestamp against the exact resume and enforces that receipt before all candidate-data Gemini workflows.
+- TalentSync is intended only for users who are at least 18; account registration states this eligibility requirement.
+- The resume upload UI provides a non-blocking Gemini-processing disclosure. The API does not require or create a per-upload consent receipt. Existing nullable receipt fields are retained only as historical records.
+- `store: false` disables Gemini Interactions API conversation-state storage, but paid-service prompts and responses may still be logged briefly for abuse monitoring unless Zero Data Retention is approved for the project.
 - Minimize resume and candidate data before model calls, and use a service tier with suitable data-use terms when required.
+- AI output must remain decision support; recruiters must not automatically reject, select, or otherwise materially disadvantage candidates solely from a Gemini result.
 
 ## Dependency advisory review
 

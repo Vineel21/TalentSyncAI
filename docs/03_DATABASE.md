@@ -4,6 +4,10 @@ Database Provider
 
 Supabase PostgreSQL
 
+The versioned SQL files in `supabase/migrations/` are the authoritative schema.
+This document summarizes the application-facing shape and intentionally omits
+some checks, helper functions, triggers, and indexes.
+
 ---
 
 # Database Naming Convention
@@ -76,7 +80,7 @@ experience JSONB
 
 certifications JSONB
 
-resume_url TEXT
+resume_path TEXT
 
 profile_completion INTEGER
 
@@ -140,7 +144,7 @@ job_id UUID FK jobs.id
 
 candidate_id UUID FK users.id
 
-resume_url TEXT
+resume_path TEXT
 
 cover_letter TEXT
 
@@ -156,7 +160,9 @@ Interview,
 
 Rejected,
 
-Offer
+Offer,
+
+Withdrawn
 
 )
 
@@ -168,7 +174,54 @@ updated_at TIMESTAMP
 
 ---
 
-## ai_analysis
+## resume_analyses
+
+Purpose
+
+Stores private resume parsing state and structured extraction snapshots.
+
+Fields
+
+id UUID PK
+
+user_id UUID FK users.id
+
+storage_path TEXT
+
+original_filename TEXT
+
+status ENUM(pending,processing,completed,failed)
+
+extracted_text TEXT
+
+parsed_data JSONB
+
+summary TEXT
+
+skills JSONB
+
+education JSONB
+
+experience JSONB
+
+certifications JSONB
+
+model TEXT
+
+error_message TEXT
+
+completed_at TIMESTAMP
+
+created_at TIMESTAMP
+
+updated_at TIMESTAMP
+
+Legacy nullable `gemini_consent_version` and `gemini_consented_at` columns may
+exist on deployed databases. New uploads do not populate or require them.
+
+---
+
+## ai_analyses
 
 Purpose
 
@@ -180,9 +233,13 @@ id UUID PK
 
 application_id UUID
 
+status ENUM(pending,processing,completed,failed)
+
+match_score INTEGER
+
 candidate_summary TEXT
 
-resume_feedback TEXT
+resume_feedback JSONB
 
 matching_skills JSONB
 
@@ -190,7 +247,15 @@ missing_skills JSONB
 
 recommendations JSONB
 
+model TEXT
+
+error_message TEXT
+
+completed_at TIMESTAMP
+
 created_at TIMESTAMP
+
+updated_at TIMESTAMP
 
 ---
 
@@ -202,13 +267,21 @@ id UUID
 
 user_id UUID
 
+kind ENUM(application_received,application_status_changed,system)
+
+application_id UUID
+
 title TEXT
 
 message TEXT
 
 is_read BOOLEAN
 
+read_at TIMESTAMP
+
 created_at TIMESTAMP
+
+updated_at TIMESTAMP
 
 ---
 
@@ -250,9 +323,17 @@ applications
 
 ↓
 
-ai_analysis
+ai_analyses
 
 1 : 1
+
+users
+
+â†“
+
+resume_analyses
+
+1 : many
 
 ---
 
@@ -328,13 +409,8 @@ Applications to own jobs only
 
 # Seed Data
 
-Recruiter
-
-admin@talentsync.ai
-
-Candidate
-
-candidate@test.com
+Authentication identities are not seeded. If a trusted recruiter account
+already exists, the seed adds the example jobs below for that recruiter.
 
 Jobs
 

@@ -2,7 +2,7 @@
 
 Base path: `/api/v1`
 
-All request bodies, path parameters, and query strings are validated with Zod. Successful responses use `{ "success": true, "message": "...", "data": ... }`; errors use `{ "success": false, "message": "...", "error": { "code": "..." } }`.
+All request bodies, path parameters, and query strings are validated with Zod. Successful responses use `{ "success": true, "message": "...", "data": ... }`; errors use `{ "success": false, "message": "...", "data": { "code": "...", "errors": [] } }`.
 
 ## Health
 

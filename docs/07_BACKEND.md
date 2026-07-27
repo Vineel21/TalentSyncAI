@@ -155,7 +155,10 @@ Analytics
 {
 success:false,
 message:"",
+data:{
+code:"",
 errors:[]
+}
 }
 
 ---

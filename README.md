@@ -10,10 +10,10 @@ TalentSync AI is a full-stack recruitment MVP for candidates and recruiters. Can
 - Protected, role-aware routes with refresh-cookie session recovery
 - Candidate profile, skills, experience, education, and certifications
 - Private PDF resume upload, download, and backend-only parsing
-- Structured AI resume analysis and improvement feedback
+- Structured AI resume parsing and candidate-controlled profile extraction
 - Public job discovery with search, filters, pagination, and job details
 - AI job-match score with matching skills, missing skills, and recommendation
-- Job applications with immutable resume snapshots and status history
+- Job applications with immutable resume snapshots, current-status tracking, and withdrawal
 - Dashboard, profile-completion indicator, and notifications
 
 ### Recruiter experience
@@ -173,8 +173,9 @@ For production:
 - Grants are explicit; new tables are not implicitly exposed.
 - Recruiter/candidate roles are read from the trusted database record, not client input after signup.
 - Resume files are validated as PDFs, limited to 5 MiB, stored privately, and authorized per user/application.
-- AI input is handled only by the backend with structured output validation, timeouts, retries, interaction storage disabled, and data minimization.
-- Candidates must confirm they are at least 18 and accept the current Gemini processing disclosure before upload; the API records that consent version against the exact resume and enforces it for later AI workflows.
+- AI input is handled only by the backend with structured output validation, timeouts, retries, Interactions API state storage disabled, and data minimization. Paid-service prompts and responses may still be retained briefly for abuse monitoring unless Google approves [Zero Data Retention](https://ai.google.dev/gemini-api/docs/zdr) for the project.
+- TalentSync is intended only for users who are at least 18. Registration states that eligibility requirement, and resume upload presents a non-blocking disclosure explaining the authorized Gemini processing purposes.
+- The former per-upload Gemini consent receipt is no longer collected or required. Existing nullable receipt fields remain only as historical records and are not populated for new uploads.
 - The [Gemini API terms](https://ai.google.dev/gemini-api/terms) instruct developers not to submit personal, sensitive, or confidential information to unpaid services. Candidate-data calls therefore fail closed unless `GEMINI_SERVICE_TIER=paid`, and production startup rejects unpaid configuration.
 - An unpaid key may be used only for synthetic development checks that contain no real personal or confidential data.
 - Secrets and local environment files are excluded from Git.

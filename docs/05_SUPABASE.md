@@ -24,7 +24,11 @@ The initial migration creates:
 
 It also defines enums, foreign keys, checks, indexes, update timestamps, profile-completion calculation, job publication timestamps, signup synchronization, application notifications, explicit grants, RLS policies, and private storage policies.
 
-A follow-up migration adds `gemini_consent_version` and `gemini_consented_at` to `resume_analyses`. Only the backend service role can create or change these receipt fields; candidates and authorized recruiters can read them through the existing row-level policies.
+A historical follow-up migration added nullable `gemini_consent_version` and
+`gemini_consented_at` fields to `resume_analyses`. The application no longer
+collects or requires per-upload Gemini consent, so new rows leave both fields
+`NULL`. Existing values are retained as historical records; removing them would
+require a separate, explicitly approved destructive migration.
 
 ## Authentication
 
