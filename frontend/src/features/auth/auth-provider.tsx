@@ -28,10 +28,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   useEffect(() => {
+    let isActive = true;
     setRefreshSessionHandler(refresh);
-    void refresh().finally(() => setIsBootstrapping(false));
-    return () => setRefreshSessionHandler(null);
-  }, [refresh]);
+
+    async function restoreSession() {
+      try {
+        const session = await authService.refresh();
+        if (!isActive) return;
+        setApiAccessToken(session.accessToken);
+        setUser(session.accessToken ? session.user : null);
+      } catch {
+        if (isActive) clearSession();
+      } finally {
+        if (isActive) setIsBootstrapping(false);
+      }
+    }
+
+    void restoreSession();
+    return () => {
+      isActive = false;
+      setRefreshSessionHandler(null);
+    };
+  }, [clearSession, refresh]);
 
   const login = useCallback(async (input: LoginInput) => {
     const session = await authService.login(input);

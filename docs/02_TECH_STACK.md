@@ -84,7 +84,15 @@ pdf-parse
 
 AI
 
-OpenAI SDK
+Google Gemini API
+
+Model
+
+`gemini-3.6-flash`
+
+Tier
+
+Billing-enabled Google Gemini API project for candidate-data workflows. Unpaid access is limited to synthetic development checks because Google instructs developers not to submit personal, sensitive, or confidential information to unpaid services. `GEMINI_API_KEY` and `GEMINI_SERVICE_TIER` are configured only in the backend runtime.
 
 Logging
 

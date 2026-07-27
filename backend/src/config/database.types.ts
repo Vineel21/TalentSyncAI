@@ -98,6 +98,8 @@ export interface ResumeAnalysisRow extends Record<string, unknown> {
   certifications: Json;
   model: string | null;
   error_message: string | null;
+  gemini_consent_version: string | null;
+  gemini_consented_at: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;

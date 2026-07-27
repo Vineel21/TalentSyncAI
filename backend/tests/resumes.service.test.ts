@@ -5,6 +5,7 @@ import type {
   UserRow,
 } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
+import { CURRENT_GEMINI_CONSENT_VERSION } from '../src/modules/ai/consent.js';
 import type { AiService } from '../src/modules/ai/service.js';
 import type { ResumesRepository } from '../src/modules/resumes/repository.js';
 import { ResumesService } from '../src/modules/resumes/service.js';
@@ -25,6 +26,22 @@ const context: AuthenticatedContext = {
   accessToken: 'access-token',
   client: {} as DatabaseClient,
 };
+const candidate: UserRow = {
+  ...recruiter,
+  id: candidateId,
+  email: 'candidate@example.com',
+  role: 'candidate',
+};
+const candidateContext: AuthenticatedContext = {
+  ...context,
+  user: candidate,
+};
+const uploadedFile = {
+  originalname: 'candidate-resume',
+  buffer: Buffer.from('%PDF-test'),
+  mimetype: 'application/pdf',
+  size: 9,
+} as Express.Multer.File;
 
 describe('ResumesService', () => {
   it('downloads the immutable application resume snapshot for recruiters', async () => {
@@ -62,16 +79,8 @@ describe('ResumesService', () => {
   });
 
   it('retains previously uploaded objects that may be referenced by applications', async () => {
-    const candidate: UserRow = {
-      ...recruiter,
-      id: candidateId,
-      email: 'candidate@example.com',
-      role: 'candidate',
-    };
-    const candidateContext: AuthenticatedContext = {
-      ...context,
-      user: candidate,
-    };
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
     const profile = {
       resume_path: `${candidateId}/previous.pdf`,
     } as ProfileRow;
@@ -86,16 +95,77 @@ describe('ResumesService', () => {
       deleteObject: vi.fn(),
     } as unknown as ResumesRepository;
     const service = new ResumesService(repository, {} as AiService);
-    const file = {
-      originalname: 'candidate-resume',
-      buffer: Buffer.from('%PDF-test'),
-      mimetype: 'application/pdf',
-      size: 9,
-    } as Express.Multer.File;
 
-    const result = await service.upload(candidateContext, file);
+    try {
+      const result = await service.upload(
+        candidateContext,
+        uploadedFile,
+        CURRENT_GEMINI_CONSENT_VERSION,
+      );
 
-    expect(result.originalFilename).toBe('candidate-resume.pdf');
-    expect(repository.deleteObject).not.toHaveBeenCalled();
+      expect(result.originalFilename).toBe('candidate-resume.pdf');
+      expect(repository.createAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: candidateId,
+          original_filename: 'candidate-resume.pdf',
+          status: 'pending',
+          gemini_consent_version: CURRENT_GEMINI_CONSENT_VERSION,
+          gemini_consented_at: now,
+        }),
+      );
+      expect(repository.deleteObject).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    {
+      label: 'has no consent receipt',
+      gemini_consent_version: null,
+      gemini_consented_at: null,
+    },
+    {
+      label: 'has a stale consent version',
+      gemini_consent_version: '2026-07-26',
+      gemini_consented_at: now,
+    },
+    {
+      label: 'has no consent timestamp',
+      gemini_consent_version: CURRENT_GEMINI_CONSENT_VERSION,
+      gemini_consented_at: null,
+    },
+  ])('rejects parsing when the current resume $label', async (receipt) => {
+    const resumePath = `${candidateId}/current.pdf`;
+    const repository = {
+      findProfile: vi.fn().mockResolvedValue({
+        resume_path: resumePath,
+      }),
+      findAnalysisByPath: vi.fn().mockResolvedValue({
+        id: '55555555-5555-4555-8555-555555555555',
+        user_id: candidateId,
+        storage_path: resumePath,
+        ...receipt,
+      }),
+      updateAnalysis: vi.fn(),
+      downloadObject: vi.fn(),
+    } as unknown as ResumesRepository;
+    const aiService = {
+      parseResume: vi.fn(),
+    } as unknown as AiService;
+    const service = new ResumesService(repository, aiService);
+
+    await expect(service.parse(candidateContext)).rejects.toMatchObject({
+      code: 'AI_CONSENT_REQUIRED',
+      statusCode: 400,
+    });
+    expect(repository.findAnalysisByPath).toHaveBeenCalledWith(
+      candidateContext.client,
+      candidateId,
+      resumePath,
+    );
+    expect(repository.updateAnalysis).not.toHaveBeenCalled();
+    expect(repository.downloadObject).not.toHaveBeenCalled();
+    expect(aiService.parseResume).not.toHaveBeenCalled();
   });
 });

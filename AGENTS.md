@@ -187,7 +187,7 @@ Supabase
 
 # AI
 
-OpenAI API
+Google Gemini API
 
 Never parse resume in frontend.
 

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, FileText, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
@@ -113,6 +113,7 @@ export function ProfilePage() {
   const experience = useFieldArray({ control: form.control, name: 'experience' });
   const education = useFieldArray({ control: form.control, name: 'education' });
   const certifications = useFieldArray({ control: form.control, name: 'certifications' });
+  const experienceValues = useWatch({ control: form.control, name: 'experience' });
 
   useEffect(() => {
     if (!profile.data) return;
@@ -412,7 +413,7 @@ export function ProfilePage() {
                       </FormField>
                       <FormField id={`experience-${index}-end`} label="End date">
                         <Input
-                          disabled={form.watch(`experience.${index}.current`)}
+                          disabled={experienceValues[index]?.current ?? false}
                           id={`experience-${index}-end`}
                           type="date"
                           {...form.register(`experience.${index}.endDate`)}

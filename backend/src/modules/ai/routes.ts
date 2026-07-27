@@ -26,6 +26,7 @@ export const createAiRoutes = (
   );
   router.post(
     '/resume-feedback',
+    recruiterOnly,
     validateRequest({ body: applicationAnalysisSchema }),
     asyncHandler(controller.feedback),
   );

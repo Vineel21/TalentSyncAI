@@ -20,6 +20,7 @@ export function ResumeUploadPage() {
   useDocumentTitle('Resume');
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [hasGeminiConsent, setHasGeminiConsent] = useState(false);
   const [parsed, setParsed] = useState<ResumeParseResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -33,6 +34,7 @@ export function ResumeUploadPage() {
     onSuccess: (result) => {
       setParsed(result);
       setFile(null);
+      setHasGeminiConsent(false);
       void queryClient.invalidateQueries({ queryKey: ['profile'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Resume parsed', 'Review the extracted details in your profile.');
@@ -52,15 +54,18 @@ export function ResumeUploadPage() {
     if (selected.type !== 'application/pdf') {
       setFileError('Choose a PDF file.');
       setFile(null);
+      setHasGeminiConsent(false);
       return;
     }
     if (selected.size > MAX_FILE_SIZE) {
       setFileError('The PDF must be 5 MB or smaller.');
       setFile(null);
+      setHasGeminiConsent(false);
       return;
     }
     setFileError(null);
     setParsed(null);
+    setHasGeminiConsent(false);
     setFile(selected);
   }
 
@@ -96,6 +101,7 @@ export function ResumeUploadPage() {
             </p>
             <input
               accept="application/pdf,.pdf"
+              aria-label="Resume PDF"
               className="sr-only"
               id="resume"
               onChange={(event) => validateFile(event.target.files?.[0])}
@@ -116,6 +122,47 @@ export function ResumeUploadPage() {
               {fileError}
             </p>
           ) : null}
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+            <p className="text-sm font-bold">Google Gemini processing</p>
+            <p
+              className="mt-1 text-sm leading-6 text-amber-950 dark:text-amber-100"
+              id="gemini-resume-disclosure"
+            >
+              Your resume text will be sent from our backend to Google Gemini to extract profile
+              details. That text and the resulting candidate profile data may later be processed for
+              authorized application matching, recruiter summaries, and resume feedback. Real
+              candidate data is processed only through a billing-enabled Gemini API project, whose
+              paid-service terms state that prompts and responses are not used to improve Google
+              products.{' '}
+              <a
+                className="font-semibold underline underline-offset-2"
+                href="https://ai.google.dev/gemini-api/terms"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Review Google&apos;s Gemini API terms
+              </a>
+              .
+            </p>
+            {file ? (
+              <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm font-medium">
+                <input
+                  aria-describedby="gemini-resume-disclosure"
+                  checked={hasGeminiConsent}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-primary"
+                  disabled={processResume.isPending}
+                  onChange={(event) => setHasGeminiConsent(event.target.checked)}
+                  required
+                  type="checkbox"
+                />
+                <span>
+                  I confirm I am 18 or older, understand this versioned disclosure, and consent to
+                  Google Gemini processing my resume text and resulting profile data for these
+                  purposes.
+                </span>
+              </label>
+            ) : null}
+          </div>
           {file ? (
             <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
@@ -133,13 +180,17 @@ export function ResumeUploadPage() {
                 <Button
                   aria-label="Remove selected resume"
                   disabled={processResume.isPending}
-                  onClick={() => setFile(null)}
+                  onClick={() => {
+                    setFile(null);
+                    setHasGeminiConsent(false);
+                  }}
                   size="icon"
                   variant="ghost"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
                 </Button>
                 <Button
+                  disabled={!hasGeminiConsent}
                   isLoading={processResume.isPending}
                   onClick={() => processResume.mutate(file)}
                 >
@@ -173,7 +224,9 @@ export function ResumeUploadPage() {
               <h2 className="font-bold">Private by design</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Only you and recruiters reviewing an application you submitted can access your resume.
+              Your stored PDF remains private: only you and recruiters reviewing an application you
+              submitted can access the file. Its text is processed by Google Gemini only after your
+              consent for the purposes disclosed here.
             </p>
           </Card>
           <Card className="p-5">

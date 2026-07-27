@@ -7,6 +7,10 @@ export interface ResumeUploadResult {
   status: 'pending';
 }
 
+export interface ResumeUploadInput {
+  geminiConsentVersion: string;
+}
+
 export interface ResumeParseResponse {
   analysisId: string;
   status: 'completed';

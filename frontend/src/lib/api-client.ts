@@ -7,6 +7,8 @@ import type { ApiErrorResponse } from '@/types/api';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
 
+export const GEMINI_REQUEST_TIMEOUT_MS = 130_000;
+
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }

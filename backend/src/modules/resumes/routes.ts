@@ -4,7 +4,7 @@ import { validateRequest } from '../../middleware/validation.js';
 import { asyncHandler } from '../../shared/async-handler.js';
 import { BadRequestError } from '../../shared/errors.js';
 import type { ResumesController } from './controller.js';
-import { resumeDownloadQuerySchema } from './validation.js';
+import { resumeDownloadQuerySchema, resumeUploadBodySchema } from './validation.js';
 
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
@@ -56,6 +56,7 @@ export const createResumesRoutes = (
     uploadRateLimit,
     upload.single('file'),
     validateResumeFile,
+    validateRequest({ body: resumeUploadBodySchema }),
     asyncHandler(controller.upload),
   );
   router.post('/parse', candidateOnly, aiRateLimit, asyncHandler(controller.parse));

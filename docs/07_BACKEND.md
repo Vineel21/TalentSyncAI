@@ -220,7 +220,7 @@ pdf-parse
 
 ↓
 
-OpenAI
+Google Gemini (`gemini-3.6-flash`)
 
 ↓
 
@@ -229,6 +229,24 @@ Structured JSON
 ↓
 
 Save Profile
+
+---
+
+# AI Provider Configuration
+
+Backend runtime only
+
+`GEMINI_API_KEY`
+
+`GEMINI_MODEL=gemini-3.6-flash`
+
+`GEMINI_SERVICE_TIER=unpaid|paid`
+
+`GEMINI_TIMEOUT_MS=30000`
+
+`GEMINI_TIMEOUT_MS` is one total provider-operation budget shared across bounded retries.
+
+Candidate-data calls require `GEMINI_SERVICE_TIER=paid`, backed by a Gemini API project with active Cloud Billing. Production configuration rejects `unpaid`. Unpaid access is reserved for synthetic development checks containing no personal or confidential data.
 
 ---
 

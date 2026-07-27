@@ -38,10 +38,10 @@ Express + TypeScript
       +-- Supabase Auth
       +-- PostgreSQL with RLS
       +-- Private Supabase Storage
-      +-- OpenAI Responses API
+      +-- Google Gemini API
 ```
 
-The browser never connects to Supabase or OpenAI directly. The Express API validates every request and passes work through controllers, services, and repositories. Repository calls use the caller's Supabase JWT so database row-level security remains the final authorization boundary.
+The browser never connects to Supabase or Google Gemini directly. The Express API validates every request and passes work through controllers, services, and repositories. Repository calls use the caller's Supabase JWT so database row-level security remains the final authorization boundary.
 
 ```text
 frontend/                 React application
@@ -57,7 +57,7 @@ docs/                     Product and technical documentation
 - Node.js 22 or newer
 - npm 10 or newer
 - A Supabase project
-- An OpenAI API key for AI workflows
+- A Google Gemini API key; a billing-enabled project is required for workflows that process real candidate data
 - Supabase CLI for local database development
 
 ## Local setup
@@ -79,6 +79,8 @@ docs/                     Product and technical documentation
 
 3. Configure `backend/.env`:
 
+   Create a new authorization key in [Google AI Studio](https://aistudio.google.com/apikey), then set it as `GEMINI_API_KEY`. Leave `GEMINI_SERVICE_TIER=unpaid` for synthetic development checks. Before processing real candidate data, attach an active Cloud Billing account, confirm the project is marked **Paid** in AI Studio, and change the value to `paid`.
+
    ```dotenv
    NODE_ENV=development
    PORT=4000
@@ -87,11 +89,13 @@ docs/                     Product and technical documentation
    SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
    SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
    SUPABASE_RESUME_BUCKET=resume-files
-   OPENAI_API_KEY=<openai-api-key>
-   OPENAI_MODEL=gpt-5.6-sol
+   GEMINI_API_KEY=<gemini-api-key>
+   GEMINI_MODEL=gemini-3.6-flash
+   GEMINI_SERVICE_TIER=unpaid
+   GEMINI_TIMEOUT_MS=30000
    ```
 
-   Keep the service-role and OpenAI keys on the backend only. The frontend requires only:
+   Keep the service-role and Gemini API keys on the backend only. The frontend requires only:
 
    ```dotenv
    VITE_API_URL=http://localhost:4000/api/v1
@@ -169,7 +173,10 @@ For production:
 - Grants are explicit; new tables are not implicitly exposed.
 - Recruiter/candidate roles are read from the trusted database record, not client input after signup.
 - Resume files are validated as PDFs, limited to 5 MiB, stored privately, and authorized per user/application.
-- AI input is handled only by the backend with structured output validation, timeouts, retries, and no response storage.
+- AI input is handled only by the backend with structured output validation, timeouts, retries, interaction storage disabled, and data minimization.
+- Candidates must confirm they are at least 18 and accept the current Gemini processing disclosure before upload; the API records that consent version against the exact resume and enforces it for later AI workflows.
+- The [Gemini API terms](https://ai.google.dev/gemini-api/terms) instruct developers not to submit personal, sensitive, or confidential information to unpaid services. Candidate-data calls therefore fail closed unless `GEMINI_SERVICE_TIER=paid`, and production startup rejects unpaid configuration.
+- An unpaid key may be used only for synthetic development checks that contain no real personal or confidential data.
 - Secrets and local environment files are excluded from Git.
 
 ## Current MVP boundary

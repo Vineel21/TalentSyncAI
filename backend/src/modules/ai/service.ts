@@ -1,10 +1,10 @@
-import { createHash, randomUUID } from 'node:crypto';
-import OpenAI from 'openai';
-import { zodTextFormat } from 'openai/helpers/zod';
-import type { ZodType } from 'zod';
+import { randomUUID } from 'node:crypto';
+import { ApiError, GoogleGenAI } from '@google/genai';
+import { z, type ZodType } from 'zod';
 import { env } from '../../config/env.js';
 import { AppError, BadRequestError, ServiceUnavailableError } from '../../shared/errors.js';
 import type { AuthenticatedContext } from '../../shared/request-context.js';
+import { assertCurrentGeminiConsent } from './consent.js';
 import type { AiRepository } from './repository.js';
 import { type ApplicationBundle, type MatchBundle } from './repository.js';
 import {
@@ -21,25 +21,45 @@ import {
 
 const MAX_UNTRUSTED_INPUT_CHARACTERS = 150_000;
 const MAX_ATTEMPTS = 3;
-
-const safetyIdentifier = (userId: string): string =>
-  createHash('sha256').update(userId).digest('hex');
+const emailValueSchema = z.email();
+const httpsUrlValueSchema = z.url({ protocol: /^https$/ });
 
 const delay = async (milliseconds: number): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 };
 
-const isTransientOpenAiError = (error: unknown): boolean => {
-  if (error instanceof OpenAI.APIConnectionError) return true;
-  if (error instanceof OpenAI.APIError) {
-    return (
-      error.status === 408 ||
-      error.status === 409 ||
-      error.status === 429 ||
-      (error.status !== undefined && error.status >= 500)
-    );
+const providerErrorStatus = (error: unknown): number | undefined => {
+  if (error instanceof ApiError) return error.status;
+  if (typeof error !== 'object' || error === null) return undefined;
+
+  if ('status' in error && typeof error.status === 'number') {
+    return error.status;
   }
-  return false;
+  if ('statusCode' in error && typeof error.statusCode === 'number') {
+    return error.statusCode;
+  }
+  return undefined;
+};
+
+const providerErrorName = (error: unknown): string | undefined => {
+  if (typeof error !== 'object' || error === null || !('name' in error)) return undefined;
+  return typeof error.name === 'string' ? error.name : undefined;
+};
+
+const isTransientGeminiError = (error: unknown): boolean => {
+  const status = providerErrorStatus(error);
+  if (status !== undefined) {
+    return status === 408 || status === 409 || status === 429 || status >= 500;
+  }
+
+  if (error instanceof TypeError) return true;
+  return [
+    'APIConnectionError',
+    'APIConnectionTimeoutError',
+    'ConnectionError',
+    'RequestTimeoutError',
+    'TimeoutError',
+  ].includes(providerErrorName(error) ?? '');
 };
 
 const asUntrustedData = (label: string, value: unknown): string => {
@@ -58,15 +78,110 @@ const asUntrustedData = (label: string, value: unknown): string => {
   ].join('\n');
 };
 
-const candidateEvidence = (bundle: MatchBundle) => ({
-  headline: bundle.profile.headline,
-  location: bundle.profile.location,
-  summary: bundle.profile.summary,
-  skills: bundle.profile.skills,
-  education: bundle.profile.education,
-  experience: bundle.profile.experience,
-  certifications: bundle.profile.certifications,
-});
+const sanitizeJsonSchema = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeJsonSchema(entry));
+  }
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    // Gemini structured output supports a JSON Schema subset. Zod emits these
+    // unsupported validation annotations, while local Zod parsing still
+    // enforces their constraints after generation.
+    if (key === '$schema' || key === 'pattern' || key === 'format') continue;
+    sanitized[key] = sanitizeJsonSchema(entry);
+  }
+  return sanitized;
+};
+
+const geminiJsonSchema = <T>(schema: ZodType<T>): Record<string, unknown> => {
+  const converted = sanitizeJsonSchema(z.toJSONSchema(schema));
+  if (typeof converted !== 'object' || converted === null || Array.isArray(converted)) {
+    throw new AppError(500, 'AI_SCHEMA_ERROR', 'The AI output schema is invalid');
+  }
+  return converted as Record<string, unknown>;
+};
+
+const normalizeEmail = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return emailValueSchema.safeParse(normalized).success ? normalized : null;
+};
+
+const normalizeHttpsUrl = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || /\s/.test(trimmed)) return null;
+
+  let candidate = trimmed;
+  if (!/^[a-z][a-z\d+.-]*:/i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+    }
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname.includes('.')) {
+      return null;
+    }
+    const normalized = url.toString();
+    return httpsUrlValueSchema.safeParse(normalized).success ? normalized : null;
+  } catch {
+    return null;
+  }
+};
+
+const isUnknownRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isUnknownArray = (value: unknown): value is unknown[] => Array.isArray(value);
+
+const normalizeResumeOutput = (value: unknown): unknown => {
+  if (!isUnknownRecord(value)) return value;
+
+  const normalized: Record<string, unknown> = {
+    ...value,
+    email: normalizeEmail(value.email),
+    linkedin: normalizeHttpsUrl(value.linkedin),
+    github: normalizeHttpsUrl(value.github),
+    portfolio: normalizeHttpsUrl(value.portfolio),
+  };
+  if (isUnknownArray(value.certifications)) {
+    normalized.certifications = value.certifications.map((certification) => {
+      if (!isUnknownRecord(certification)) return certification;
+      return {
+        ...certification,
+        credentialUrl: normalizeHttpsUrl(certification.credentialUrl),
+      };
+    });
+  }
+  return normalized;
+};
+
+const assertRecruiterApplicationAnalysis = (context: AuthenticatedContext): void => {
+  if (context.user.role !== 'recruiter') {
+    throw new AppError(403, 'FORBIDDEN', 'Only recruiters can analyze an existing application');
+  }
+};
+
+const candidateEvidence = (bundle: MatchBundle | ApplicationBundle) => {
+  const snapshot = 'resumeSnapshot' in bundle ? bundle.resumeSnapshot : null;
+  const source = snapshot ?? bundle.profile;
+  return {
+    headline: source.headline,
+    location: source.location,
+    summary: source.summary,
+    skills: source.skills,
+    education: source.education,
+    experience: source.experience,
+    certifications: source.certifications,
+  };
+};
 
 const jobEvidence = (bundle: MatchBundle) => ({
   title: bundle.job.title,
@@ -78,30 +193,33 @@ const jobEvidence = (bundle: MatchBundle) => ({
   requiredSkills: bundle.job.required_skills,
 });
 
-class OpenAiGateway {
-  private readonly client: OpenAI | null;
+class GeminiGateway {
+  private readonly client: GoogleGenAI | null;
 
   public constructor() {
-    this.client = env.OPENAI_API_KEY
-      ? new OpenAI({
-          apiKey: env.OPENAI_API_KEY,
-          timeout: env.OPENAI_TIMEOUT_MS,
-          maxRetries: 0,
+    this.client = env.GEMINI_API_KEY
+      ? new GoogleGenAI({
+          apiKey: env.GEMINI_API_KEY,
         })
       : null;
   }
 
   public get model(): string {
-    return env.OPENAI_MODEL;
+    return env.GEMINI_MODEL;
   }
 
   private async structured<T>(
     schema: ZodType<T>,
-    schemaName: string,
     instructions: string,
     untrustedInput: string,
-    stableSafetyIdentifier: string,
+    normalize?: (value: unknown) => unknown,
   ): Promise<T> {
+    if (env.GEMINI_SERVICE_TIER !== 'paid') {
+      throw new ServiceUnavailableError(
+        'AI candidate-data processing requires a paid Gemini service tier',
+        'AI_PAID_TIER_REQUIRED',
+      );
+    }
     if (!this.client) {
       throw new ServiceUnavailableError(
         'AI features are not configured on this server',
@@ -109,35 +227,70 @@ class OpenAiGateway {
       );
     }
 
+    const deadline = Date.now() + env.GEMINI_TIMEOUT_MS;
     let lastError: unknown;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-      try {
-        const response = await this.client.responses.parse({
-          model: env.OPENAI_MODEL,
-          store: false,
-          safety_identifier: stableSafetyIdentifier,
-          reasoning: { effort: 'low' },
-          instructions,
-          input: untrustedInput,
-          text: {
-            format: zodTextFormat(schema, schemaName),
-          },
-        });
+      const remainingMilliseconds = deadline - Date.now();
+      if (remainingMilliseconds <= 0) break;
 
-        if (!response.output_parsed) {
+      try {
+        const response = await this.client.interactions.create(
+          {
+            model: env.GEMINI_MODEL,
+            store: false,
+            system_instruction: instructions,
+            input: untrustedInput,
+            response_format: {
+              type: 'text',
+              mime_type: 'application/json',
+              schema: geminiJsonSchema(schema),
+            },
+            generation_config: {
+              thinking_level: 'low',
+            },
+          },
+          {
+            timeout: remainingMilliseconds,
+            maxRetries: 0,
+          },
+        );
+
+        if (!response.output_text) {
           throw new AppError(
             502,
             'AI_INVALID_RESPONSE',
             'The AI provider did not return a valid structured response',
           );
         }
-        return response.output_parsed;
+
+        let decoded: unknown;
+        try {
+          decoded = JSON.parse(response.output_text);
+        } catch {
+          throw new AppError(
+            502,
+            'AI_INVALID_RESPONSE',
+            'The AI provider did not return a valid structured response',
+          );
+        }
+
+        const parsed = schema.safeParse(normalize ? normalize(decoded) : decoded);
+        if (!parsed.success) {
+          throw new AppError(
+            502,
+            'AI_INVALID_RESPONSE',
+            'The AI provider did not return a valid structured response',
+          );
+        }
+        return parsed.data;
       } catch (error) {
         lastError = error;
-        if (!isTransientOpenAiError(error) || attempt === MAX_ATTEMPTS - 1) {
+        if (!isTransientGeminiError(error) || attempt === MAX_ATTEMPTS - 1) {
           break;
         }
-        await delay(250 * 2 ** attempt);
+        const backoffMilliseconds = 250 * 2 ** attempt;
+        if (backoffMilliseconds >= deadline - Date.now()) break;
+        await delay(backoffMilliseconds);
       }
     }
 
@@ -145,29 +298,26 @@ class OpenAiGateway {
     throw new AppError(502, 'AI_PROVIDER_ERROR', 'The AI provider could not complete the analysis');
   }
 
-  public async parseResume(
-    resumeText: string,
-    stableSafetyIdentifier: string,
-  ): Promise<ResumeParseResult> {
+  public async parseResume(resumeText: string): Promise<ResumeParseResult> {
     return this.structured(
       resumeParseResultSchema,
-      'resume_parse',
       [
         'You are an accurate ATS resume parser.',
         'Extract only facts explicitly supported by the supplied resume.',
         'Use null for unknown scalar values and empty arrays for missing collections.',
         'Do not infer employers, dates, skills, qualifications, or contact details.',
+        'Return email addresses trimmed and lowercase; use null when an email is invalid.',
+        'Return profile and credential URLs as absolute HTTPS URLs; use null when a URL is missing or invalid.',
         'Preserve concise factual descriptions and normalize obvious whitespace only.',
       ].join(' '),
       asUntrustedData('resume_text', resumeText),
-      stableSafetyIdentifier,
+      normalizeResumeOutput,
     );
   }
 
-  public async match(bundle: MatchBundle, stableSafetyIdentifier: string): Promise<MatchResult> {
+  public async match(bundle: MatchBundle): Promise<MatchResult> {
     return this.structured(
       matchResultSchema,
-      'job_match',
       [
         'You evaluate job fit using only the supplied candidate profile and job.',
         'Score from 0 to 100 based on evidence, with required skills and experience weighted most.',
@@ -180,34 +330,24 @@ class OpenAiGateway {
         candidate: candidateEvidence(bundle),
         job: jobEvidence(bundle),
       }),
-      stableSafetyIdentifier,
     );
   }
 
-  public async summarize(
-    bundle: ApplicationBundle,
-    stableSafetyIdentifier: string,
-  ): Promise<CandidateSummaryResult> {
+  public async summarize(bundle: ApplicationBundle): Promise<CandidateSummaryResult> {
     return this.structured(
       candidateSummaryResultSchema,
-      'candidate_summary',
       [
         'Write a recruiter-friendly professional summary of no more than 120 words.',
         'Use only supplied evidence. Highlight relevant experience, technologies, projects, and strengths.',
         'Do not add sensitive inferences, protected characteristics, or hiring decisions.',
       ].join(' '),
       asUntrustedData('candidate_profile', candidateEvidence(bundle)),
-      stableSafetyIdentifier,
     );
   }
 
-  public async feedback(
-    bundle: ApplicationBundle,
-    stableSafetyIdentifier: string,
-  ): Promise<ResumeFeedbackResult> {
+  public async feedback(bundle: ApplicationBundle): Promise<ResumeFeedbackResult> {
     return this.structured(
       resumeFeedbackResultSchema,
-      'resume_feedback',
       [
         'Provide concrete, evidence-based resume improvement suggestions.',
         'Organize suggestions in the required categories.',
@@ -218,13 +358,12 @@ class OpenAiGateway {
         profile: candidateEvidence(bundle),
         extractedResumeText: bundle.resumeText,
       }),
-      stableSafetyIdentifier,
     );
   }
 }
 
 export class AiService {
-  private readonly gateway = new OpenAiGateway();
+  private readonly gateway = new GeminiGateway();
 
   public constructor(private readonly repository: AiRepository) {}
 
@@ -232,8 +371,8 @@ export class AiService {
     return this.gateway.model;
   }
 
-  public async parseResume(resumeText: string, userId: string): Promise<ResumeParseResult> {
-    return this.gateway.parseResume(resumeText, safetyIdentifier(userId));
+  public async parseResume(resumeText: string, _userId: string): Promise<ResumeParseResult> {
+    return this.gateway.parseResume(resumeText);
   }
 
   public async calculateMatch(
@@ -253,7 +392,8 @@ export class AiService {
         context.user.id,
         input.jobId,
       );
-      return this.gateway.match(bundle, safetyIdentifier(context.user.id));
+      assertCurrentGeminiConsent(bundle.resumeConsent);
+      return this.gateway.match(bundle);
     }
 
     if (context.user.role !== 'recruiter') {
@@ -261,9 +401,10 @@ export class AiService {
     }
     const applicationId = input.applicationId;
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
+    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
-      const result = await this.gateway.match(bundle, safetyIdentifier(context.user.id));
+      const result = await this.gateway.match(bundle);
       await Promise.all([
         this.repository.updateMatchScore(applicationId, result.score),
         this.repository.updateAnalysis(applicationId, {
@@ -288,10 +429,12 @@ export class AiService {
     context: AuthenticatedContext,
     applicationId: string,
   ): Promise<CandidateSummaryResult> {
+    assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
+    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
-      const result = await this.gateway.summarize(bundle, safetyIdentifier(context.user.id));
+      const result = await this.gateway.summarize(bundle);
       await this.repository.updateAnalysis(applicationId, {
         status: 'completed',
         candidate_summary: result.summary,
@@ -310,10 +453,12 @@ export class AiService {
     context: AuthenticatedContext,
     applicationId: string,
   ): Promise<ResumeFeedbackResult> {
+    assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
+    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
-      const result = await this.gateway.feedback(bundle, safetyIdentifier(context.user.id));
+      const result = await this.gateway.feedback(bundle);
       await this.repository.updateAnalysis(applicationId, {
         status: 'completed',
         resume_feedback: result,

@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@google/genai": "2.13.0",
     "@supabase/supabase-js": "2.55.0",
     "compression": "1.8.1",
     "cookie-parser": "1.4.7",
@@ -30,7 +31,6 @@
     "helmet": "8.1.0",
     "morgan": "1.11.0",
     "multer": "2.2.0",
-    "openai": "6.39.0",
     "pdf-parse": "2.4.5",
     "zod": "4.1.12"
   },

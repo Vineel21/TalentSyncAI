@@ -1,25 +1,40 @@
-import { api } from '@/lib/api-client';
+import { api, GEMINI_REQUEST_TIMEOUT_MS } from '@/lib/api-client';
 import { getData } from '@/services/api-helpers';
 import type { ApiResponse, MatchResult } from '@/types/api';
 
 export const aiService = {
   async candidateMatchScore(jobId: string) {
     return getData(
-      (await api.post<ApiResponse<{ analysis: MatchResult }>>('/ai/match-score', { jobId })).data,
+      (
+        await api.post<ApiResponse<{ analysis: MatchResult }>>(
+          '/ai/match-score',
+          { jobId },
+          { timeout: GEMINI_REQUEST_TIMEOUT_MS },
+        )
+      ).data,
     ).analysis;
   },
   async applicationMatchScore(applicationId: string) {
     return getData(
-      (await api.post<ApiResponse<{ analysis: MatchResult }>>('/ai/match-score', { applicationId }))
-        .data,
+      (
+        await api.post<ApiResponse<{ analysis: MatchResult }>>(
+          '/ai/match-score',
+          { applicationId },
+          { timeout: GEMINI_REQUEST_TIMEOUT_MS },
+        )
+      ).data,
     ).analysis;
   },
   async candidateSummary(applicationId: string) {
     return getData(
       (
-        await api.post<ApiResponse<{ analysis: { summary: string } }>>('/ai/candidate-summary', {
-          applicationId,
-        })
+        await api.post<ApiResponse<{ analysis: { summary: string } }>>(
+          '/ai/candidate-summary',
+          {
+            applicationId,
+          },
+          { timeout: GEMINI_REQUEST_TIMEOUT_MS },
+        )
       ).data,
     ).analysis;
   },
@@ -37,7 +52,7 @@ export const aiService = {
               achievements: string[];
             };
           }>
-        >('/ai/resume-feedback', { applicationId })
+        >('/ai/resume-feedback', { applicationId }, { timeout: GEMINI_REQUEST_TIMEOUT_MS })
       ).data,
     ).analysis;
   },

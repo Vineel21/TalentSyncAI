@@ -3,6 +3,11 @@ import { PDFParse } from 'pdf-parse';
 import type { Database, ProfileRow } from '../../config/database.types.js';
 import { AppError, BadRequestError } from '../../shared/errors.js';
 import type { AuthenticatedContext } from '../../shared/request-context.js';
+import {
+  assertCurrentGeminiConsent,
+  assertCurrentGeminiConsentVersion,
+  toGeminiConsentReceipt,
+} from '../ai/consent.js';
 import type { AiService } from '../ai/service.js';
 import type { ResumeParseResult } from '../ai/types.js';
 import type { ResumesRepository } from './repository.js';
@@ -76,7 +81,9 @@ export class ResumesService {
   public async upload(
     context: AuthenticatedContext,
     file: Express.Multer.File,
+    geminiConsentVersion: string,
   ): Promise<ResumeUploadResult> {
+    assertCurrentGeminiConsentVersion(geminiConsentVersion);
     const safeFilename = sanitizeFilename(file.originalname);
     const objectPath = `${context.user.id}/${randomUUID()}.pdf`;
     await this.repository.findProfile(context.client, context.user.id);
@@ -88,6 +95,8 @@ export class ResumesService {
         storage_path: objectPath,
         original_filename: safeFilename,
         status: 'pending',
+        gemini_consent_version: geminiConsentVersion,
+        gemini_consented_at: new Date().toISOString(),
       });
       await this.repository.updateProfile(context.client, context.user.id, {
         resume_path: objectPath,
@@ -119,6 +128,7 @@ export class ResumesService {
       context.user.id,
       profile.resume_path,
     );
+    assertCurrentGeminiConsent(toGeminiConsentReceipt(analysis));
     await this.repository.updateAnalysis(context.user.id, analysis.id, {
       status: 'processing',
       error_message: null,

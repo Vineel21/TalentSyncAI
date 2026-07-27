@@ -24,6 +24,8 @@ The initial migration creates:
 
 It also defines enums, foreign keys, checks, indexes, update timestamps, profile-completion calculation, job publication timestamps, signup synchronization, application notifications, explicit grants, RLS policies, and private storage policies.
 
+A follow-up migration adds `gemini_consent_version` and `gemini_consented_at` to `resume_analyses`. Only the backend service role can create or change these receipt fields; candidates and authorized recruiters can read them through the existing row-level policies.
+
 ## Authentication
 
 Email/password authentication is supported for `candidate` and `recruiter` accounts. A signup trigger copies the requested role into the trusted `public.users` record once. Runtime authorization always reads that database role and does not trust mutable client metadata.

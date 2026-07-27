@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
-import { validatedQuery } from '../../middleware/validation.js';
+import { validatedBody, validatedQuery } from '../../middleware/validation.js';
 import { sendSuccess } from '../../shared/api-response.js';
 import { AuthenticationError, BadRequestError } from '../../shared/errors.js';
 import type { ResumesService } from './service.js';
-import type { ResumeDownloadQuery } from './types.js';
+import type { ResumeDownloadQuery, ResumeUploadInput } from './types.js';
 
 export class ResumesController {
   public constructor(private readonly service: ResumesService) {}
@@ -13,7 +13,8 @@ export class ResumesController {
     if (!request.file) {
       throw new BadRequestError('A PDF file is required in the file field', 'RESUME_FILE_REQUIRED');
     }
-    const resume = await this.service.upload(request.auth, request.file);
+    const { geminiConsentVersion } = validatedBody<ResumeUploadInput>(request);
+    const resume = await this.service.upload(request.auth, request.file, geminiConsentVersion);
     return sendSuccess(response, 201, 'Resume uploaded', { resume });
   };
 

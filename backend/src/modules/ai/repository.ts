@@ -8,6 +8,8 @@ import type {
 import type { DatabaseClient } from '../../config/supabase.js';
 import { serviceSupabase } from '../../config/supabase.js';
 import { NotFoundError, throwDatabaseError } from '../../shared/errors.js';
+import { toGeminiConsentReceipt, type GeminiConsentReceipt } from './consent.js';
+import { resumeParseResultSchema, type ResumeParseResult } from './types.js';
 
 type AnalysisInsert = Database['public']['Tables']['ai_analyses']['Insert'];
 type AnalysisUpdate = Database['public']['Tables']['ai_analyses']['Update'];
@@ -17,12 +19,24 @@ export interface ApplicationBundle {
   job: JobRow;
   profile: ProfileRow;
   resumeText: string | null;
+  resumeSnapshot: ResumeParseResult | null;
+  resumeConsent: GeminiConsentReceipt | null;
 }
 
 export interface MatchBundle {
   job: JobRow;
   profile: ProfileRow;
+  resumeConsent: GeminiConsentReceipt | null;
 }
+
+const validatedResumeSnapshot = (
+  status: string | undefined,
+  parsedData: unknown,
+): ResumeParseResult | null => {
+  if (status !== 'completed') return null;
+  const parsed = resumeParseResultSchema.safeParse(parsedData);
+  return parsed.success ? parsed.data : null;
+};
 
 export class AiRepository {
   public async getCandidateJobBundle(
@@ -46,7 +60,22 @@ export class AiRepository {
     }
     if (!jobResult.data) throw new NotFoundError('Open job');
     if (!profileResult.data) throw new NotFoundError('Candidate profile');
-    return { job: jobResult.data, profile: profileResult.data };
+
+    let resumeConsent: GeminiConsentReceipt | null = null;
+    if (profileResult.data.resume_path) {
+      const resumeResult = await client
+        .from('resume_analyses')
+        .select('gemini_consent_version, gemini_consented_at')
+        .eq('user_id', candidateId)
+        .eq('storage_path', profileResult.data.resume_path)
+        .maybeSingle();
+      if (resumeResult.error) {
+        throwDatabaseError(resumeResult.error, 'Unable to load resume consent');
+      }
+      resumeConsent = toGeminiConsentReceipt(resumeResult.data);
+    }
+
+    return { job: jobResult.data, profile: profileResult.data, resumeConsent };
   }
   public async getApplicationBundle(
     client: DatabaseClient,
@@ -79,7 +108,7 @@ export class AiRepository {
 
     const resumeResult = await client
       .from('resume_analyses')
-      .select('extracted_text')
+      .select('status, extracted_text, parsed_data, gemini_consent_version, gemini_consented_at')
       .eq('user_id', applicationResult.data.candidate_id)
       .eq('storage_path', applicationResult.data.resume_path)
       .maybeSingle();
@@ -92,6 +121,11 @@ export class AiRepository {
       job: jobResult.data,
       profile: profileResult.data,
       resumeText: resumeResult.data?.extracted_text ?? null,
+      resumeSnapshot: validatedResumeSnapshot(
+        resumeResult.data?.status,
+        resumeResult.data?.parsed_data,
+      ),
+      resumeConsent: toGeminiConsentReceipt(resumeResult.data),
     };
   }
 
