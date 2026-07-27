@@ -1,6 +1,8 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type UserRole = 'candidate' | 'recruiter';
+export type OnboardingStep = 1 | 2 | 3;
+export type OnboardingSource = 'resume' | 'manual';
 export type JobStatus = 'draft' | 'open' | 'closed';
 export type EmploymentType =
   | 'full_time'
@@ -45,6 +47,10 @@ export interface ProfileRow extends Record<string, unknown> {
   certifications: Json;
   resume_path: string | null;
   profile_completion: number;
+  onboarding_step: OnboardingStep;
+  onboarding_source: OnboardingSource | null;
+  onboarding_completed_at: string | null;
+  recommendations_skipped_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +141,12 @@ export interface NotificationRow extends Record<string, unknown> {
   updated_at: string;
 }
 
+export interface SavedJobRow extends Record<string, unknown> {
+  candidate_id: string;
+  job_id: string;
+  created_at: string;
+}
+
 type TableDefinition<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -171,6 +183,10 @@ export interface Database {
             | 'experience'
             | 'certifications'
             | 'resume_path'
+            | 'onboarding_step'
+            | 'onboarding_source'
+            | 'onboarding_completed_at'
+            | 'recommendations_skipped_at'
           >
         >
       >;
@@ -269,6 +285,11 @@ export interface Database {
         Pick<NotificationRow, 'user_id' | 'title' | 'message'> &
           Partial<Pick<NotificationRow, 'kind' | 'application_id' | 'is_read' | 'read_at'>>,
         Partial<Pick<NotificationRow, 'is_read' | 'read_at'>>
+      >;
+      saved_jobs: TableDefinition<
+        SavedJobRow,
+        Pick<SavedJobRow, 'candidate_id' | 'job_id'> & Partial<Pick<SavedJobRow, 'created_at'>>,
+        Record<string, never>
       >;
     };
     Views: Record<string, never>;

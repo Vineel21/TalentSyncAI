@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
+import { CandidateOnboardingGate } from '@/features/onboarding/candidate-onboarding-gate';
 import { AppShell } from '@/layouts/app-shell';
 import { PublicLayout } from '@/layouts/public-layout';
 import { ProtectedRoute } from './protected-route';
@@ -35,6 +36,11 @@ const ProfilePage = lazy(() =>
 const ResumeUploadPage = lazy(() =>
   import('@/pages/candidate/resume-upload-page').then((module) => ({
     default: module.ResumeUploadPage,
+  })),
+);
+const OnboardingPage = lazy(() =>
+  import('@/pages/candidate/onboarding-page').then((module) => ({
+    default: module.OnboardingPage,
   })),
 );
 const LandingPage = lazy(() =>
@@ -77,7 +83,12 @@ const NotificationsPage = lazy(() =>
 function RoleAppShell() {
   const { user } = useAuth();
   if (!user) return <Navigate replace to="/login" />;
-  return <AppShell role={user.role} />;
+  const shell = <AppShell role={user.role} />;
+  return user.role === 'candidate' ? (
+    <CandidateOnboardingGate>{shell}</CandidateOnboardingGate>
+  ) : (
+    shell
+  );
 }
 
 export function AppRouter() {
@@ -101,13 +112,16 @@ export function AppRouter() {
         </Route>
 
         <Route element={<ProtectedRoute roles={['candidate']} />}>
-          <Route element={<AppShell role="candidate" />}>
-            <Route element={<CandidateDashboardPage />} path="dashboard" />
-            <Route element={<ProfilePage />} path="profile" />
-            <Route element={<ResumeUploadPage />} path="profile/upload-resume" />
-            <Route element={<JobsPage />} path="jobs" />
-            <Route element={<JobDetailsPage />} path="jobs/:id" />
-            <Route element={<ApplicationsPage />} path="applications" />
+          <Route element={<OnboardingPage />} path="onboarding" />
+          <Route element={<CandidateOnboardingGate />}>
+            <Route element={<AppShell role="candidate" />}>
+              <Route element={<CandidateDashboardPage />} path="dashboard" />
+              <Route element={<ProfilePage />} path="profile" />
+              <Route element={<ResumeUploadPage />} path="profile/upload-resume" />
+              <Route element={<JobsPage />} path="jobs" />
+              <Route element={<JobDetailsPage />} path="jobs/:id" />
+              <Route element={<ApplicationsPage />} path="applications" />
+            </Route>
           </Route>
         </Route>
 

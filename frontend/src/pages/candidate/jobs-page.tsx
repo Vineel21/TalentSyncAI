@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { JobCard } from '@/features/jobs/job-card';
+import { SaveJobButton, useSavedJobs } from '@/features/saved-jobs/saved-jobs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormField } from '@/components/ui/form-field';
@@ -77,6 +78,7 @@ export function JobsPage() {
         status: 'open',
       }),
   });
+  const savedJobs = useSavedJobs();
 
   const applyFilters = form.handleSubmit((values) => {
     const next = new URLSearchParams();
@@ -179,7 +181,11 @@ export function JobsPage() {
           </div>
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {jobs.data.items.map((job) => (
-              <JobCard job={job} key={job.id} />
+              <JobCard
+                job={job}
+                key={job.id}
+                secondaryAction={<SaveJobButton job={job} savedJobs={savedJobs.data} />}
+              />
             ))}
           </div>
           <Pagination

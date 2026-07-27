@@ -181,6 +181,7 @@ export interface CandidateDashboard {
   };
   recentApplications: Application[];
   recommendedJobs: Job[];
+  savedJobs: SavedJob[];
 }
 
 export interface RecruiterDashboard {
@@ -222,4 +223,25 @@ export interface MatchResult {
   missingSkills: string[];
   recommendation: string;
   rationale?: string;
+}
+
+export type OnboardingSource = 'resume' | 'manual';
+export type OnboardingStep = 1 | 2 | 3;
+
+export interface CandidateOnboarding {
+  currentStep: OnboardingStep;
+  source: OnboardingSource | null;
+  completedAt: string | null;
+  recommendationsSkippedAt: string | null;
+}
+
+export interface JobRecommendation {
+  job: Job;
+  match: MatchResult;
+  aiGenerated: boolean;
+}
+
+export interface SavedJob {
+  job: Job;
+  savedAt: string;
 }

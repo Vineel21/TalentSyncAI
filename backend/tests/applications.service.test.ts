@@ -61,6 +61,10 @@ const profile: ProfileRow = {
   certifications: [],
   resume_path: application.resume_path,
   profile_completion: 20,
+  onboarding_step: 3,
+  onboarding_source: 'resume',
+  onboarding_completed_at: now,
+  recommendations_skipped_at: null,
   created_at: now,
   updated_at: now,
 };

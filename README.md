@@ -1,6 +1,6 @@
 # TalentSync AI
 
-TalentSync AI is a full-stack recruitment MVP for candidates and recruiters. Candidates can build a profile, upload and parse a PDF resume, discover jobs, receive an AI match assessment, apply, and track their application history. Recruiters can publish jobs, review applicants, generate structured AI summaries and match scores, move candidates through a hiring pipeline, and inspect recruiting analytics.
+TalentSync AI is a full-stack recruitment MVP for candidates and recruiters. New candidates enter a progressive, three-step onboarding flow where they can build a profile manually or from a parsed PDF resume, refine the extracted data, review profile-based job recommendations, and continue to a dashboard. Candidates can discover and save jobs, receive an AI match assessment, apply, and track their application history. Recruiters can publish jobs, review applicants, generate structured AI summaries and match scores, move candidates through a hiring pipeline, and inspect recruiting analytics.
 
 ## What is included
 
@@ -8,11 +8,16 @@ TalentSync AI is a full-stack recruitment MVP for candidates and recruiters. Can
 
 - Email/password registration and login with Supabase Auth
 - Protected, role-aware routes with refresh-cookie session recovery
+- Registration-triggered, persisted three-step onboarding with resumable progress
+- Resume-assisted or manual profile creation followed by profile refinement
 - Candidate profile, skills, experience, education, and certifications
 - Private PDF resume upload, download, and backend-only parsing
 - Structured AI resume parsing and candidate-controlled profile extraction
 - Public job discovery with search, filters, pagination, and job details
+- Up to three profile-ranked onboarding recommendations with Gemini enrichment,
+  deterministic fallback, and a non-blocking Skip action
 - AI job-match score with matching skills, missing skills, and recommendation
+- Candidate-owned saved jobs with save/remove controls and dashboard integration
 - Job applications with immutable resume snapshots, current-status tracking, and withdrawal
 - Dashboard, profile-completion indicator, and notifications
 
@@ -203,4 +208,10 @@ For production:
 
 ## Current MVP boundary
 
-Email delivery, social login, saved jobs, interview scheduling, company pages, and background AI jobs are intentionally outside this MVP. The repository is structured so these can be added as feature modules without bypassing the API or RLS boundaries.
+The candidate/recruiter MVP includes progressive onboarding, profile-based
+recommendations with a deterministic provider fallback, saved jobs, application
+tracking, recruiter workflow, dashboards, analytics, and notifications. Email
+delivery, password-reset and social-login interfaces, interview scheduling,
+company pages, immutable application-event history, and background AI jobs
+remain outside this MVP. The repository is structured so those capabilities can
+be added as feature modules without bypassing the API or RLS boundaries.

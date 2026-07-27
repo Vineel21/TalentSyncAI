@@ -14,8 +14,15 @@ pass a production smoke test.
 - Supabase Auth with candidate/recruiter role-based access
 - Feature-based Express API under `/api/v1`
 - Candidate and recruiter React experiences
+- Registration-triggered, persisted three-step candidate onboarding with
+  resume-assisted and manual paths, editable profile refinement, backward
+  navigation, and responsive progress UI
 - Resume upload, parsing, feedback, and private download
 - Job discovery and recruiter job management
+- Profile-ranked onboarding job recommendations with Gemini enrichment,
+  deterministic per-job fallback, and a non-blocking Skip path
+- Candidate-owned saved jobs across onboarding, job discovery, and the
+  candidate dashboard
 - Application workflow and hiring-pipeline transitions
 - AI candidate summary and job-match analysis
 - Dashboards, analytics, and notifications
@@ -28,16 +35,18 @@ pass a production smoke test.
   implemented candidate/recruiter MVP.
 - Application tracking stores the current status; it does not provide an
   immutable event-history timeline.
-- Candidate dashboard recommendations are currently recent eligible jobs, not
-  personalized ranking.
+- Personalized ranking is implemented for the onboarding recommendation step.
+  The candidate dashboard's separate recommended-jobs section still shows
+  recent eligible jobs rather than persisting that ranked result.
 - Recruiter analytics include six monthly application cohorts and current
   pipeline counts. Exact status-event and conversion history remains unavailable
   because applications do not have an immutable event timeline.
-- Settings pages, profile images, saved jobs, and several aspirational landing
-  page sections are not implemented. Saved jobs and company profiles are
-  explicitly post-MVP.
-- Automated tests cover services, components, API behavior, and builds, but a
-  real Supabase Auth/RLS/Storage vertical test and browser E2E suite remain.
+- Settings pages, profile images, company profiles, and several aspirational
+  landing page sections are not implemented.
+- Automated tests cover services, components, API behavior, and builds. A
+  connected-project candidate Auth/onboarding/RLS/saved-job vertical smoke test
+  passed on 2026-07-27; automated browser E2E and a production recruiter smoke
+  test remain.
 
 See `docs/13_MVP_ALIGNMENT_AUDIT.md` for the detailed requirements comparison.
 
@@ -59,12 +68,14 @@ See `docs/13_MVP_ALIGNMENT_AUDIT.md` for the detailed requirements comparison.
   billed project and review its logging/Zero Data Retention configuration
 - Configure Render and Vercel environment variables
 - Configure Supabase Auth production URLs
-- Smoke-test candidate and recruiter flows in production
+- Smoke-test candidate registration, resume/manual onboarding, recommendation
+  fallback/skip, saved jobs, dashboard, and application tracking, plus the
+  complete recruiter flow, in production
 
 ## Post-MVP backlog
 
 - Password-reset and social-login interfaces
-- Saved jobs and company profiles
+- Company profiles
 - Background queues for long-running AI work
 - Transactional email delivery
 - Interview scheduling and calendar integration

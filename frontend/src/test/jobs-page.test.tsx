@@ -11,6 +11,14 @@ vi.mock('@/services/job.service', () => ({
   },
 }));
 
+vi.mock('@/services/saved-job.service', () => ({
+  savedJobService: {
+    list: vi.fn().mockResolvedValue([]),
+    save: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },

@@ -5,26 +5,31 @@ import {
   CalendarCheck2,
   CircleCheckBig,
   FileText,
+  MapPin,
   Sparkles,
   UploadCloud,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ApplicationCard } from '@/features/applications/application-card';
 import { JobCard } from '@/features/jobs/job-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, ErrorState, PageLoading } from '@/components/ui/state-view';
 import { StatCard } from '@/components/ui/stat-card';
 import { useAuth } from '@/features/auth/auth-context';
+import { SaveJobButton, useSavedJobs } from '@/features/saved-jobs/saved-jobs';
 import { useDocumentTitle } from '@/hooks/use-document-title';
+import { formatDate } from '@/lib/utils';
 import { dashboardService } from '@/services/dashboard.service';
 import { profileService } from '@/services/profile.service';
 
 export function CandidateDashboardPage() {
   useDocumentTitle('Dashboard');
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const dashboard = useQuery({
     queryKey: ['dashboard', 'candidate'],
     queryFn: dashboardService.candidate,
@@ -33,6 +38,7 @@ export function CandidateDashboardPage() {
     queryKey: ['profile', 'me'],
     queryFn: profileService.getMine,
   });
+  const savedJobs = useSavedJobs();
 
   if (dashboard.isLoading || profile.isLoading)
     return <PageLoading label="Loading candidate dashboard" />;
@@ -54,6 +60,22 @@ export function CandidateDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {searchParams.get('welcome') === '1' ? (
+        <Card className="border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
+          <div className="flex items-start gap-3">
+            <CircleCheckBig
+              aria-hidden="true"
+              className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+            />
+            <div>
+              <p className="font-bold">Your candidate workspace is ready</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Explore matches, save promising roles, and track every application here.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <PageHeader
         description="Here’s what’s moving in your search and where to focus next."
         eyebrow="Candidate workspace"
@@ -183,10 +205,91 @@ export function CandidateDashboardPage() {
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {data.recommendedJobs.slice(0, 3).map((job) => (
-              <JobCard job={job} key={job.id} />
+              <JobCard
+                job={job}
+                key={job.id}
+                secondaryAction={<SaveJobButton job={job} savedJobs={savedJobs.data} />}
+              />
             ))}
           </div>
         )}
+      </section>
+
+      <section aria-labelledby="saved-jobs-heading">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold" id="saved-jobs-heading">
+              Saved jobs
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Roles you want to revisit before applying.
+            </p>
+          </div>
+          <Link className="text-sm font-semibold text-primary hover:underline" to="/jobs">
+            Browse jobs
+          </Link>
+        </div>
+        {savedJobs.isLoading ? (
+          <div aria-label="Loading saved jobs" className="grid gap-4 md:grid-cols-2" role="status">
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
+          </div>
+        ) : null}
+        {savedJobs.isError ? (
+          <Card className="border-red-200 p-6 text-center">
+            <h3 className="font-bold">Saved jobs couldn’t be loaded</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your other dashboard information is still available.
+            </p>
+            <Button className="mt-4" onClick={() => void savedJobs.refetch()} variant="outline">
+              Try again
+            </Button>
+          </Card>
+        ) : null}
+        {savedJobs.data?.length === 0 ? (
+          <EmptyState
+            action={
+              <Button asChild>
+                <Link to="/jobs">Explore open roles</Link>
+              </Button>
+            }
+            description="Save interesting roles from recommendations or job search, then compare them here."
+            icon={BriefcaseBusiness}
+            title="No saved jobs yet"
+          />
+        ) : null}
+        {savedJobs.data && savedJobs.data.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {savedJobs.data.slice(0, 4).map((savedJob) => (
+              <Card className="flex flex-col p-5" key={savedJob.job.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      className="text-lg font-bold hover:text-primary"
+                      to={`/jobs/${savedJob.job.id}`}
+                    >
+                      {savedJob.job.title}
+                    </Link>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground">
+                      {savedJob.job.companyName}
+                    </p>
+                  </div>
+                  <SaveJobButton job={savedJob.job} savedJobs={savedJobs.data} />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                    {savedJob.job.location}
+                  </span>
+                  <span>Saved {formatDate(savedJob.savedAt)}</span>
+                </div>
+                <Button asChild className="mt-5 w-full sm:w-auto" variant="outline">
+                  <Link to={`/jobs/${savedJob.job.id}`}>View job</Link>
+                </Button>
+              </Card>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section>

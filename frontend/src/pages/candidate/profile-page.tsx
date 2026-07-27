@@ -89,7 +89,19 @@ const emptyEducation = {
 const emptyCertification = { name: '', issuer: '', issuedAt: '', credentialUrl: '' };
 
 export function ProfilePage() {
-  useDocumentTitle('Profile');
+  return <CandidateProfileEditor />;
+}
+
+export function CandidateProfileEditor({
+  onboarding = false,
+  onBack,
+  onSaved,
+}: {
+  onboarding?: boolean;
+  onBack?: () => void;
+  onSaved?: () => void | Promise<void>;
+}) {
+  useDocumentTitle(onboarding ? 'Review your profile' : 'Profile');
   const toast = useToast();
   const queryClient = useQueryClient();
   const profile = useQuery({ queryKey: ['profile', 'me'], queryFn: profileService.getMine });
@@ -193,10 +205,16 @@ export function ProfilePage() {
           credentialUrl: entry.credentialUrl || null,
         })),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.setQueryData(['profile', 'me'], data);
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success('Profile saved', 'Your matching profile is up to date.');
+      toast.success(
+        onboarding ? 'Profile ready' : 'Profile saved',
+        onboarding
+          ? 'Next, we’ll find roles aligned to your profile.'
+          : 'Your matching profile is up to date.',
+      );
+      await onSaved?.();
     },
     onError: (error) => toast.error('Couldn’t save profile', errorMessage(error)),
   });
@@ -208,40 +226,96 @@ export function ProfilePage() {
     );
   if (!profile.data) return <PageLoading label="Loading profile" />;
 
-  return (
-    <form
-      className="space-y-8"
-      noValidate
-      onSubmit={form.handleSubmit((values) => update.mutate(values))}
-    >
-      <PageHeader
-        description="Keep your experience accurate so matches and recruiter summaries reflect your work."
-        eyebrow="Candidate profile"
-        title="Your professional story"
-        action={
-          <Button isLoading={update.isPending} type="submit">
-            <Save aria-hidden="true" className="h-4 w-4" />
-            Save profile
-          </Button>
+  const submitProfile = (values: FormValues) => {
+    if (onboarding) {
+      form.clearErrors('root.onboarding');
+      let hasMissingFields = false;
+      const requiredTextFields: Array<{
+        name: 'headline' | 'location' | 'summary' | 'skills';
+        message: string;
+      }> = [
+        { name: 'headline', message: 'Add the type of role you’re targeting.' },
+        { name: 'location', message: 'Add your location or Remote.' },
+        { name: 'summary', message: 'Add a short professional summary.' },
+        { name: 'skills', message: 'Add at least one skill.' },
+      ];
+
+      for (const field of requiredTextFields) {
+        if (!values[field.name].trim()) {
+          form.setError(field.name, { type: 'required', message: field.message });
+          hasMissingFields = true;
         }
-      />
-      <Card className="p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex-1">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold">Profile completion</span>
-              <span>{profile.data.profileCompletion}%</span>
+      }
+
+      if (values.experience.length === 0 && values.education.length === 0) {
+        form.setError('root.onboarding', {
+          type: 'required',
+          message:
+            'Add at least one education or experience entry. Education alone is enough for freshers.',
+        });
+        hasMissingFields = true;
+      }
+
+      if (hasMissingFields) return;
+    }
+
+    update.mutate(values);
+  };
+
+  return (
+    <form className="space-y-8" noValidate onSubmit={form.handleSubmit(submitProfile)}>
+      {!onboarding ? (
+        <>
+          <PageHeader
+            description="Keep your experience accurate so matches and recruiter summaries reflect your work."
+            eyebrow="Candidate profile"
+            title="Your professional story"
+            action={
+              <Button isLoading={update.isPending} type="submit">
+                <Save aria-hidden="true" className="h-4 w-4" />
+                Save profile
+              </Button>
+            }
+          />
+          <Card className="p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold">Profile completion</span>
+                  <span>{profile.data.profileCompletion}%</span>
+                </div>
+                <Progress className="mt-2" value={profile.data.profileCompletion} />
+              </div>
+              <Button asChild variant="outline">
+                <Link className="flex items-center gap-2" to="/profile/upload-resume">
+                  <FileText aria-hidden="true" className="h-4 w-4" />
+                  {profile.data.resumePath ? 'Replace resume' : 'Upload resume'}
+                </Link>
+              </Button>
             </div>
-            <Progress className="mt-2" value={profile.data.profileCompletion} />
-          </div>
-          <Button asChild variant="outline">
-            <Link className="flex items-center gap-2" to="/profile/upload-resume">
-              <FileText aria-hidden="true" className="h-4 w-4" />
-              {profile.data.resumePath ? 'Replace resume' : 'Upload resume'}
-            </Link>
-          </Button>
+          </Card>
+        </>
+      ) : (
+        <div>
+          <p className="text-sm font-bold uppercase tracking-widest text-primary">Step 2</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            Review your profile
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Check every field before we create your matches. Freshers can continue with education
+            and do not need employment history.
+          </p>
         </div>
-      </Card>
+      )}
+
+      {form.formState.errors.root?.onboarding?.message ? (
+        <div
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive"
+          role="alert"
+        >
+          {form.formState.errors.root.onboarding.message}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.72fr]">
         <div className="space-y-6">
@@ -386,13 +460,21 @@ export function ProfilePage() {
                       </Button>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField id={`experience-${index}-title`} label="Job title">
+                      <FormField
+                        id={`experience-${index}-title`}
+                        label="Job title"
+                        error={form.formState.errors.experience?.[index]?.title?.message}
+                      >
                         <Input
                           id={`experience-${index}-title`}
                           {...form.register(`experience.${index}.title`)}
                         />
                       </FormField>
-                      <FormField id={`experience-${index}-company`} label="Company">
+                      <FormField
+                        id={`experience-${index}-company`}
+                        label="Company"
+                        error={form.formState.errors.experience?.[index]?.company?.message}
+                      >
                         <Input
                           id={`experience-${index}-company`}
                           {...form.register(`experience.${index}.company`)}
@@ -477,14 +559,22 @@ export function ProfilePage() {
                         <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <FormField id={`education-${index}-institution`} label="Institution">
+                    <FormField
+                      id={`education-${index}-institution`}
+                      label="Institution"
+                      error={form.formState.errors.education?.[index]?.institution?.message}
+                    >
                       <Input
                         id={`education-${index}-institution`}
                         {...form.register(`education.${index}.institution`)}
                       />
                     </FormField>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField id={`education-${index}-degree`} label="Degree">
+                      <FormField
+                        id={`education-${index}-degree`}
+                        label="Degree"
+                        error={form.formState.errors.education?.[index]?.degree?.message}
+                      >
                         <Input
                           id={`education-${index}-degree`}
                           {...form.register(`education.${index}.degree`)}
@@ -626,10 +716,17 @@ export function ProfilePage() {
           ) : null}
         </div>
       </div>
-      <div className="sticky bottom-20 flex justify-end rounded-xl border bg-card/90 p-3 shadow-lg backdrop-blur lg:bottom-4">
+      <div className="sticky bottom-0 z-20 -mx-4 flex items-center justify-between gap-3 border bg-card/95 p-3 shadow-lg backdrop-blur sm:mx-0 sm:rounded-xl lg:bottom-4">
+        {onboarding ? (
+          <Button disabled={update.isPending} onClick={onBack} type="button" variant="ghost">
+            Back
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button isLoading={update.isPending} type="submit">
           <Save aria-hidden="true" className="h-4 w-4" />
-          Save all changes
+          {onboarding ? 'Save and see matches' : 'Save all changes'}
         </Button>
       </div>
     </form>

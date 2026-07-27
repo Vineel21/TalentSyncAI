@@ -45,6 +45,14 @@ import { NotificationsController } from './modules/notifications/controller.js';
 import { NotificationsRepository } from './modules/notifications/repository.js';
 import { createNotificationsRoutes } from './modules/notifications/routes.js';
 import { NotificationsService } from './modules/notifications/service.js';
+import { OnboardingController } from './modules/onboarding/controller.js';
+import { OnboardingRepository } from './modules/onboarding/repository.js';
+import { createOnboardingRoutes } from './modules/onboarding/routes.js';
+import { OnboardingService } from './modules/onboarding/service.js';
+import { SavedJobsController } from './modules/saved-jobs/controller.js';
+import { SavedJobsRepository } from './modules/saved-jobs/repository.js';
+import { createSavedJobsRoutes } from './modules/saved-jobs/routes.js';
+import { SavedJobsService } from './modules/saved-jobs/service.js';
 import { sendSuccess } from './shared/api-response.js';
 import { AuthorizationError } from './shared/errors.js';
 
@@ -97,8 +105,13 @@ export const createApp = (): Express => {
   const resumesController = new ResumesController(
     new ResumesService(new ResumesRepository(), aiService),
   );
+  const savedJobsRepository = new SavedJobsRepository();
+  const savedJobsController = new SavedJobsController(new SavedJobsService(savedJobsRepository));
+  const onboardingController = new OnboardingController(
+    new OnboardingService(new OnboardingRepository(), aiService),
+  );
   const dashboardController = new DashboardController(
-    new DashboardService(new DashboardRepository()),
+    new DashboardService(new DashboardRepository(), savedJobsRepository),
   );
   const notificationsController = new NotificationsController(
     new NotificationsService(new NotificationsRepository()),
@@ -139,6 +152,14 @@ export const createApp = (): Express => {
     ),
   );
   app.use('/api/v1/ai', createAiRoutes(aiController, authenticate, recruiterOnly, aiRateLimit));
+  app.use(
+    '/api/v1/onboarding',
+    createOnboardingRoutes(onboardingController, authenticate, candidateOnly, aiRateLimit),
+  );
+  app.use(
+    '/api/v1/saved-jobs',
+    createSavedJobsRoutes(savedJobsController, authenticate, candidateOnly),
+  );
   app.use('/api/v1/dashboard', createDashboardRoutes(dashboardController, authenticate));
   app.use(
     '/api/v1/notifications',

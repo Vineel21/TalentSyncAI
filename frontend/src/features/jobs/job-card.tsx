@@ -1,4 +1,5 @@
 import { ArrowUpRight, BriefcaseBusiness, Clock3, MapPin } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,12 @@ export function JobCard({
   job,
   detailsPath = `/jobs/${job.id}`,
   actionLabel = 'View job',
+  secondaryAction,
 }: {
   job: Job;
   detailsPath?: string;
   actionLabel?: string;
+  secondaryAction?: ReactNode;
 }) {
   const salaryMin = formatCurrency(job.salaryMin);
   const salaryMax = formatCurrency(job.salaryMax);
@@ -61,15 +64,18 @@ export function JobCard({
           ) : null}
         </div>
       </div>
-      <Button asChild className="mt-5 w-full" variant="outline">
-        <Link className="flex w-full items-center justify-center gap-2" to={detailsPath}>
-          {actionLabel}
-          <ArrowUpRight
-            aria-hidden="true"
-            className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-          />
-        </Link>
-      </Button>
+      <div className="mt-5 flex items-center gap-2">
+        <Button asChild className="flex-1" variant="outline">
+          <Link className="flex w-full items-center justify-center gap-2" to={detailsPath}>
+            {actionLabel}
+            <ArrowUpRight
+              aria-hidden="true"
+              className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            />
+          </Link>
+        </Button>
+        {secondaryAction}
+      </div>
     </Card>
   );
 }

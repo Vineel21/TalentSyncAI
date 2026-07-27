@@ -55,7 +55,7 @@ export function RegisterPage() {
   });
 
   if (!isBootstrapping && user) {
-    return <Navigate replace to={user.role === 'recruiter' ? '/recruiter' : '/dashboard'} />;
+    return <Navigate replace to={user.role === 'recruiter' ? '/recruiter' : '/onboarding'} />;
   }
 
   if (verificationEmail) {
@@ -96,7 +96,7 @@ export function RegisterPage() {
         return;
       }
       toast.success('Account created', 'Let’s set up your workspace.');
-      navigate(result.user.role === 'recruiter' ? '/recruiter' : '/profile/upload-resume', {
+      navigate(result.user.role === 'recruiter' ? '/recruiter' : '/onboarding', {
         replace: true,
       });
     } catch (error) {

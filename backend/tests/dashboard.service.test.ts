@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { UserRow } from '../src/config/database.types.js';
+import type { JobRow, SavedJobRow, UserRow } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
 import type { DashboardRepository } from '../src/modules/dashboard/repository.js';
 import { DashboardService } from '../src/modules/dashboard/service.js';
 import type { DashboardRepositoryData } from '../src/modules/dashboard/types.js';
+import type { SavedJobsRepository } from '../src/modules/saved-jobs/repository.js';
 import type { AuthenticatedContext } from '../src/shared/request-context.js';
 
 const referenceDate = new Date('2026-07-27T12:00:00.000Z');
@@ -18,6 +19,27 @@ const context: AuthenticatedContext = {
   user: recruiter,
   accessToken: 'access-token',
   client: {} as DatabaseClient,
+};
+const savedJobListing: JobRow = {
+  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  recruiter_id: recruiter.id,
+  title: 'TypeScript Engineer',
+  company_name: 'TalentSync',
+  location: 'Remote',
+  employment_type: 'full_time',
+  salary_min: null,
+  salary_max: null,
+  currency: 'USD',
+  description: 'Build reliable hiring software.',
+  requirements: 'Strong TypeScript experience.',
+  required_skills: ['TypeScript'],
+  status: 'open',
+  expires_at: null,
+  published_at: referenceDate.toISOString(),
+  deleted_at: null,
+  search_vector: '',
+  created_at: referenceDate.toISOString(),
+  updated_at: referenceDate.toISOString(),
 };
 const repositoryData: DashboardRepositoryData = {
   stats: {
@@ -45,7 +67,12 @@ describe('DashboardService', () => {
       recruiter: recruiterDashboard,
       candidate: vi.fn(),
     } as unknown as DashboardRepository;
-    const service = new DashboardService(repository, () => referenceDate);
+    const listSavedJobs = vi.fn();
+    const service = new DashboardService(
+      repository,
+      { list: listSavedJobs } as unknown as SavedJobsRepository,
+      () => referenceDate,
+    );
 
     const result = await service.get(context);
 
@@ -59,6 +86,62 @@ describe('DashboardService', () => {
       label: 'Jul',
       applicants: 1,
       interviews: 1,
+    });
+    expect(result.savedJobs).toEqual([]);
+    expect(listSavedJobs).not.toHaveBeenCalled();
+  });
+
+  it('includes at most three saved jobs in the candidate dashboard contract', async () => {
+    const candidate: UserRow = {
+      ...recruiter,
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      email: 'candidate@example.com',
+      role: 'candidate',
+    };
+    const candidateContext: AuthenticatedContext = {
+      ...context,
+      user: candidate,
+    };
+    const candidateData: DashboardRepositoryData = {
+      stats: {
+        profileCompletion: 80,
+        totalApplications: 1,
+        underReview: 1,
+        shortlisted: 0,
+        interviews: 0,
+        offers: 0,
+        unreadNotifications: 0,
+      },
+      recentApplications: [],
+      recommendedJobs: [],
+      recentJobs: [],
+      recentApplicants: [],
+      activityApplications: [],
+    };
+    const candidateDashboard = vi.fn().mockResolvedValue(candidateData);
+    const savedRow: SavedJobRow = {
+      candidate_id: candidate.id,
+      job_id: savedJobListing.id,
+      created_at: referenceDate.toISOString(),
+    };
+    const listSavedJobs = vi.fn().mockResolvedValue([{ savedJob: savedRow, job: savedJobListing }]);
+    const service = new DashboardService(
+      {
+        candidate: candidateDashboard,
+        recruiter: vi.fn(),
+      },
+      { list: listSavedJobs } as unknown as SavedJobsRepository,
+      () => referenceDate,
+    );
+
+    const result = await service.get(candidateContext);
+
+    expect(candidateDashboard).toHaveBeenCalledWith(candidateContext.client, candidate.id);
+    expect(listSavedJobs).toHaveBeenCalledWith(candidateContext.client, candidate.id, 3);
+    expect(result.savedJobs).toHaveLength(1);
+    expect(result.savedJobs[0]).toMatchObject({
+      job: { id: savedJobListing.id },
+      savedAt: referenceDate.toISOString(),
     });
   });
 });

@@ -3,6 +3,8 @@ import type { ApplicationRecord, ApplicationView } from '../applications/types.j
 import { toApplicationView } from '../applications/types.js';
 import type { JobView } from '../jobs/types.js';
 import { toJobView } from '../jobs/types.js';
+import type { SavedJobRecord, SavedJobView } from '../saved-jobs/types.js';
+import { toSavedJobView } from '../saved-jobs/types.js';
 
 export interface CandidateDashboardStats {
   profileCompletion: number;
@@ -50,6 +52,7 @@ export interface DashboardData {
   recentJobs: JobView[];
   recentApplicants: ApplicationView[];
   analytics: DashboardAnalyticsPoint[];
+  savedJobs: SavedJobView[];
 }
 
 const monthLabel = new Intl.DateTimeFormat('en-US', {
@@ -104,6 +107,7 @@ export const buildRecruiterActivity = (
 export const toDashboardData = (
   data: DashboardRepositoryData,
   referenceDate = new Date(),
+  savedJobs: SavedJobRecord[] = [],
 ): DashboardData => ({
   stats: data.stats,
   recentApplications: data.recentApplications.map(toApplicationView),
@@ -111,4 +115,5 @@ export const toDashboardData = (
   recentJobs: data.recentJobs.map(toJobView),
   recentApplicants: data.recentApplicants.map(toApplicationView),
   analytics: buildRecruiterActivity(data.activityApplications, referenceDate),
+  savedJobs: savedJobs.map(toSavedJobView),
 });

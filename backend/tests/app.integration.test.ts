@@ -73,4 +73,17 @@ describe('API integration', () => {
     expect(response.headers['set-cookie']?.[0]).toContain('talentsync_refresh=');
     expect(response.headers['set-cookie']?.[0]).toContain('Expires=Thu, 01 Jan 1970');
   });
+
+  it.each(['/api/v1/onboarding', '/api/v1/saved-jobs'])(
+    'protects the candidate feature route %s',
+    async (path) => {
+      const response = await request(createApp()).get(path);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toMatchObject({
+        success: false,
+        data: { code: 'UNAUTHENTICATED' },
+      });
+    },
+  );
 });

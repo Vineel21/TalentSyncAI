@@ -548,6 +548,10 @@ const seedCandidateProfilesAndResumes = async (
         experience: asJson(candidate.experience),
         certifications: asJson(candidate.certifications),
         resume_path: currentPath,
+        onboarding_step: 3,
+        onboarding_source: 'resume',
+        onboarding_completed_at: new Date().toISOString(),
+        recommendations_skipped_at: null,
       })
       .eq('user_id', user.id);
     failOnError(profileError, `Unable to update profile for ${candidate.email}`);

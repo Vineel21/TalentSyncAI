@@ -84,9 +84,21 @@ resume_path TEXT
 
 profile_completion INTEGER
 
+onboarding_step SMALLINT (1, 2, or 3; defaults to 1)
+
+onboarding_source TEXT (resume, manual, or null)
+
+onboarding_completed_at TIMESTAMPTZ
+
+recommendations_skipped_at TIMESTAMPTZ
+
 created_at TIMESTAMP
 
 updated_at TIMESTAMP
+
+New profiles begin at onboarding step 1. Profiles that existed before the
+progressive-onboarding migration are backfilled to step 3 with a completion
+timestamp so established users are not redirected into the wizard.
 
 ---
 
@@ -285,6 +297,33 @@ updated_at TIMESTAMP
 
 ---
 
+## saved_jobs
+
+Purpose
+
+Stores candidate-owned job bookmarks used by job discovery, onboarding, and
+the candidate dashboard.
+
+Fields
+
+candidate_id UUID FK profiles.user_id
+
+job_id UUID FK jobs.id
+
+created_at TIMESTAMPTZ
+
+Primary key
+
+(candidate_id, job_id)
+
+The composite primary key prevents duplicate bookmarks. Saves are idempotent at
+the API layer, and only currently candidate-visible jobs that accept
+applications can be inserted. If a saved job later closes or expires it remains
+visible to its owner so the bookmark can be reviewed or removed; soft-deleted
+jobs remain hidden.
+
+---
+
 # Relationships
 
 users
@@ -335,6 +374,22 @@ resume_analyses
 
 1 : many
 
+users
+
+↓
+
+saved_jobs
+
+1 : many
+
+jobs
+
+↓
+
+saved_jobs
+
+1 : many
+
 ---
 
 # Storage Buckets
@@ -371,6 +426,12 @@ applications(job_id)
 
 profiles(user_id)
 
+saved_jobs(candidate_id, job_id) primary key
+
+saved_jobs(candidate_id, created_at desc)
+
+saved_jobs(job_id)
+
 ---
 
 # Row Level Security
@@ -404,6 +465,21 @@ Own applications
 Recruiter
 
 Applications to own jobs only
+
+Saved Jobs
+
+Candidate
+
+Can list, insert, and delete only rows whose `candidate_id` matches the
+authenticated user. Inserts additionally require the job to be open,
+unexpired, non-deleted, and accepting applications.
+
+Recruiter
+
+No saved-job access
+
+The `saved_jobs` table has RLS enabled and explicit Data API grants. It is
+immutable after insertion; there is intentionally no UPDATE privilege.
 
 ---
 
