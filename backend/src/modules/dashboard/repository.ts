@@ -8,9 +8,12 @@ import type { DatabaseClient } from '../../config/supabase.js';
 import { throwDatabaseError } from '../../shared/errors.js';
 import type {
   CandidateDashboardStats,
+  DashboardActivityApplication,
   DashboardRepositoryData,
   RecruiterDashboardStats,
 } from './types.js';
+
+const ACTIVITY_PAGE_SIZE = 1_000;
 
 const countApplications = async (
   client: DatabaseClient,
@@ -36,6 +39,34 @@ const unreadCount = async (client: DatabaseClient, userId: string): Promise<numb
     .eq('is_read', false);
   if (error) throwDatabaseError(error, 'Unable to calculate unread notifications');
   return count ?? 0;
+};
+
+const loadApplicantActivity = async (
+  client: DatabaseClient,
+  jobIds: string[],
+  activitySince: string,
+  activityBefore: string,
+): Promise<DashboardActivityApplication[]> => {
+  const activity: DashboardActivityApplication[] = [];
+  let from = 0;
+
+  while (true) {
+    const result = await client
+      .from('applications')
+      .select('created_at, status')
+      .in('job_id', jobIds)
+      .gte('created_at', activitySince)
+      .lt('created_at', activityBefore)
+      .order('created_at', { ascending: true })
+      .range(from, from + ACTIVITY_PAGE_SIZE - 1);
+    if (result.error) {
+      throwDatabaseError(result.error, 'Unable to load applicant activity');
+    }
+    const page = result.data ?? [];
+    activity.push(...page);
+    if (page.length < ACTIVITY_PAGE_SIZE) return activity;
+    from += ACTIVITY_PAGE_SIZE;
+  }
 };
 
 const hydrateApplications = async (
@@ -135,10 +166,16 @@ export class DashboardRepository {
       recommendedJobs: jobsResult.data ?? [],
       recentJobs: [],
       recentApplicants: [],
+      activityApplications: [],
     };
   }
 
-  public async recruiter(client: DatabaseClient, userId: string): Promise<DashboardRepositoryData> {
+  public async recruiter(
+    client: DatabaseClient,
+    userId: string,
+    activitySince: string,
+    activityBefore: string,
+  ): Promise<DashboardRepositoryData> {
     const jobsResult = await client
       .from('jobs')
       .select('*')
@@ -150,17 +187,22 @@ export class DashboardRepository {
     const jobIds = jobs.map((job) => job.id);
 
     let recentApplications: ApplicationRow[] = [];
+    let activityApplications: DashboardActivityApplication[] = [];
     if (jobIds.length) {
-      const result = await client
-        .from('applications')
-        .select('*')
-        .in('job_id', jobIds)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (result.error) {
-        throwDatabaseError(result.error, 'Unable to load recent applicants');
+      const [recentResult, activityResult] = await Promise.all([
+        client
+          .from('applications')
+          .select('*')
+          .in('job_id', jobIds)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        loadApplicantActivity(client, jobIds, activitySince, activityBefore),
+      ]);
+      if (recentResult.error) {
+        throwDatabaseError(recentResult.error, 'Unable to load recent applicants');
       }
-      recentApplications = result.data ?? [];
+      recentApplications = recentResult.data ?? [];
+      activityApplications = activityResult;
     }
 
     const [
@@ -198,6 +240,7 @@ export class DashboardRepository {
       recommendedJobs: [],
       recentJobs: jobs.slice(0, 5),
       recentApplicants: await hydrateApplications(client, recentApplications, true),
+      activityApplications,
     };
   }
 }

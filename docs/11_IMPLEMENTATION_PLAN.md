@@ -30,8 +30,9 @@ pass a production smoke test.
   immutable event-history timeline.
 - Candidate dashboard recommendations are currently recent eligible jobs, not
   personalized ranking.
-- Recruiter analytics summarize current pipeline data rather than historical
-  trends.
+- Recruiter analytics include six monthly application cohorts and current
+  pipeline counts. Exact status-event and conversion history remains unavailable
+  because applications do not have an immutable event timeline.
 - Settings pages, profile images, saved jobs, and several aspirational landing
   page sections are not implemented. Saved jobs and company profiles are
   explicitly post-MVP.
