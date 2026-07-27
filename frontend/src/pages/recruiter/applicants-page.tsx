@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { statusVariant } from '@/features/applications/application-card';
+import { ResumeFeedbackPanel } from '@/features/applications/resume-feedback-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -193,6 +194,10 @@ function CandidateDetails({
             <p className="mt-3 text-sm text-muted-foreground">No skills listed.</p>
           )}
         </section>
+        <ResumeFeedbackPanel
+          applicationId={application.id}
+          initialFeedback={application.analysis?.resumeFeedback}
+        />
         {match.data?.matchingSkills.length || application.analysis?.matchingSkills?.length ? (
           <section className="mt-8">
             <h3 className="text-lg font-bold">Match signals</h3>

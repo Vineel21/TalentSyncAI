@@ -1,6 +1,6 @@
 import { api, GEMINI_REQUEST_TIMEOUT_MS } from '@/lib/api-client';
 import { getData } from '@/services/api-helpers';
-import type { ApiResponse, MatchResult } from '@/types/api';
+import type { ApiResponse, MatchResult, ResumeFeedback } from '@/types/api';
 
 export const aiService = {
   async candidateMatchScore(jobId: string) {
@@ -43,14 +43,7 @@ export const aiService = {
       (
         await api.post<
           ApiResponse<{
-            analysis: {
-              grammar: string[];
-              ats: string[];
-              skills: string[];
-              projects: string[];
-              formatting: string[];
-              achievements: string[];
-            };
+            analysis: ResumeFeedback;
           }>
         >('/ai/resume-feedback', { applicationId }, { timeout: GEMINI_REQUEST_TIMEOUT_MS })
       ).data,

@@ -122,11 +122,20 @@ export type ApplicationStatus =
   | 'offer'
   | 'withdrawn';
 
+export interface ResumeFeedback {
+  grammar: string[];
+  ats: string[];
+  skills: string[];
+  projects: string[];
+  formatting: string[];
+  achievements: string[];
+}
+
 export interface AiAnalysis {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   matchScore: number | null;
   candidateSummary: string | null;
-  resumeFeedback?: unknown;
+  resumeFeedback?: ResumeFeedback | null;
   matchingSkills: string[] | null;
   missingSkills: string[] | null;
   recommendations: string[] | null;
