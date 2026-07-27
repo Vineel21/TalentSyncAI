@@ -1,6 +1,5 @@
 import type { ApplicationRow, JobRow, ProfileRow } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
-import { CURRENT_GEMINI_CONSENT_VERSION } from '../src/modules/ai/consent.js';
 import { AiRepository } from '../src/modules/ai/repository.js';
 import type { ResumeParseResult } from '../src/modules/ai/types.js';
 
@@ -73,11 +72,6 @@ const parsedSnapshot: ResumeParseResult = {
   experience: [],
   certifications: [],
 };
-const currentConsent = {
-  gemini_consent_version: CURRENT_GEMINI_CONSENT_VERSION,
-  gemini_consented_at: now,
-};
-
 const createQuery = (data: unknown) => {
   const query = {
     select: vi.fn(),
@@ -102,10 +96,11 @@ const createClient = (resumeAnalysis: unknown) => {
     ['profiles', profileQuery],
     ['resume_analyses', resumeQuery],
   ]);
+  const from = vi.fn((table: string) => queries.get(table));
   const client = {
-    from: vi.fn((table: string) => queries.get(table)),
+    from,
   } as unknown as DatabaseClient;
-  return { client, resumeQuery };
+  return { client, from, resumeQuery };
 };
 
 describe('AiRepository application evidence', () => {
@@ -114,43 +109,28 @@ describe('AiRepository application evidence', () => {
       status: 'completed',
       extracted_text: 'Submitted immutable resume text.',
       parsed_data: parsedSnapshot,
-      ...currentConsent,
     });
 
     const bundle = await new AiRepository().getApplicationBundle(client, application.id);
 
     expect(bundle.resumeSnapshot).toEqual(parsedSnapshot);
     expect(bundle.resumeText).toBe('Submitted immutable resume text.');
-    expect(bundle.resumeConsent).toEqual({
-      version: CURRENT_GEMINI_CONSENT_VERSION,
-      consentedAt: now,
-    });
+    expect(bundle).not.toHaveProperty('resumeConsent');
     const selectedColumns = resumeQuery.select.mock.calls[0]?.[0] as string;
-    expect(selectedColumns).toContain('status');
-    expect(selectedColumns).toContain('extracted_text');
-    expect(selectedColumns).toContain('parsed_data');
-    expect(selectedColumns).toContain('gemini_consent_version');
-    expect(selectedColumns).toContain('gemini_consented_at');
+    expect(selectedColumns).toBe('status, extracted_text, parsed_data');
     expect(resumeQuery.eq).toHaveBeenNthCalledWith(1, 'user_id', candidateId);
     expect(resumeQuery.eq).toHaveBeenNthCalledWith(2, 'storage_path', application.resume_path);
   });
 
-  it('loads candidate match consent from the exact current profile resume path', async () => {
-    const { client, resumeQuery } = createClient({
-      status: 'completed',
-      extracted_text: 'Current resume text.',
-      parsed_data: parsedSnapshot,
-      ...currentConsent,
-    });
+  it('loads candidate match evidence without querying resume receipt metadata', async () => {
+    const { client, from, resumeQuery } = createClient(null);
 
     const bundle = await new AiRepository().getCandidateJobBundle(client, candidateId, job.id);
 
-    expect(bundle.resumeConsent).toEqual({
-      version: CURRENT_GEMINI_CONSENT_VERSION,
-      consentedAt: now,
-    });
-    expect(resumeQuery.eq).toHaveBeenNthCalledWith(1, 'user_id', candidateId);
-    expect(resumeQuery.eq).toHaveBeenNthCalledWith(2, 'storage_path', profile.resume_path);
+    expect(bundle).toEqual({ job, profile });
+    expect(bundle).not.toHaveProperty('resumeConsent');
+    expect(from).not.toHaveBeenCalledWith('resume_analyses');
+    expect(resumeQuery.select).not.toHaveBeenCalled();
   });
 
   it('falls back when a completed analysis contains an invalid parsed snapshot', async () => {
@@ -161,7 +141,6 @@ describe('AiRepository application evidence', () => {
         ...parsedSnapshot,
         skills: 'not-an-array',
       },
-      ...currentConsent,
     });
 
     const bundle = await new AiRepository().getApplicationBundle(client, application.id);
@@ -175,29 +154,11 @@ describe('AiRepository application evidence', () => {
       status: 'processing',
       extracted_text: null,
       parsed_data: parsedSnapshot,
-      ...currentConsent,
     });
 
     const bundle = await new AiRepository().getApplicationBundle(client, application.id);
 
     expect(bundle.resumeSnapshot).toBeNull();
     expect(bundle.profile).toEqual(profile);
-  });
-
-  it('returns empty receipt fields when the exact application resume has no consent metadata', async () => {
-    const { client } = createClient({
-      status: 'completed',
-      extracted_text: 'Submitted immutable resume text.',
-      parsed_data: parsedSnapshot,
-      gemini_consent_version: null,
-      gemini_consented_at: null,
-    });
-
-    const bundle = await new AiRepository().getApplicationBundle(client, application.id);
-
-    expect(bundle.resumeConsent).toEqual({
-      version: null,
-      consentedAt: null,
-    });
   });
 });

@@ -14,7 +14,7 @@ describe('resumeService', () => {
     vi.clearAllMocks();
   });
 
-  it('includes the current Gemini consent receipt when uploading a resume', async () => {
+  it('uploads a file-only multipart payload', async () => {
     const resume = new File(['%PDF-1.4 synthetic'], 'resume.pdf', {
       type: 'application/pdf',
     });
@@ -40,6 +40,6 @@ describe('resumeService', () => {
     expect(path).toBe('/resume/upload');
     expect(body).toBeInstanceOf(FormData);
     expect((body as FormData).get('file')).toBe(resume);
-    expect((body as FormData).get('geminiConsentVersion')).toBe('2026-07-27');
+    expect([...(body as FormData).keys()]).toEqual(['file']);
   });
 });

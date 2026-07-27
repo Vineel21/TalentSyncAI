@@ -2,7 +2,6 @@ import express, { type RequestHandler } from 'express';
 import request from 'supertest';
 import type { DatabaseClient } from '../src/config/supabase.js';
 import { errorHandler } from '../src/middleware/error-handler.js';
-import { CURRENT_GEMINI_CONSENT_VERSION } from '../src/modules/ai/consent.js';
 import { ResumesController } from '../src/modules/resumes/controller.js';
 import { createResumesRoutes } from '../src/modules/resumes/routes.js';
 import type { ResumesService } from '../src/modules/resumes/service.js';
@@ -39,33 +38,36 @@ const createUploadApp = (controller: ResumesController) => {
   return app;
 };
 
-describe('resume upload consent validation', () => {
-  it.each([
-    ['a missing version', undefined],
-    ['an empty version', ''],
-    ['a stale version', '2026-07-26'],
-    ['an unknown future version', '2026-07-28'],
-  ])('rejects multipart uploads with %s', async (_label, consentVersion) => {
+describe('resume upload body validation', () => {
+  it('rejects the deprecated Gemini consent field', async () => {
     const upload = vi.fn();
     const app = createUploadApp({ upload } as unknown as ResumesController);
-    let uploadRequest = request(app).post('/api/v1/resume/upload');
-    if (consentVersion !== undefined) {
-      uploadRequest = uploadRequest.field('geminiConsentVersion', consentVersion);
-    }
 
-    const response = await uploadRequest.attach('file', validPdf, {
-      filename: 'resume.pdf',
-      contentType: 'application/pdf',
-    });
+    const response = await request(app)
+      .post('/api/v1/resume/upload')
+      .field('geminiConsentVersion', '2026-07-27')
+      .attach('file', validPdf, {
+        filename: 'resume.pdf',
+        contentType: 'application/pdf',
+      });
 
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
       success: false,
+      data: {
+        code: 'VALIDATION_ERROR',
+        errors: [
+          expect.objectContaining({
+            field: 'body',
+            code: 'unrecognized_keys',
+          }),
+        ],
+      },
     });
     expect(upload).not.toHaveBeenCalled();
   });
 
-  it('accepts only the exact current consent version', async () => {
+  it('accepts a file-only upload with an empty multipart body', async () => {
     const upload = vi.fn().mockResolvedValue({
       analysisId: '22222222-2222-4222-8222-222222222222',
       resumePath: `${candidateContext.user.id}/resume.pdf`,
@@ -75,13 +77,10 @@ describe('resume upload consent validation', () => {
     const controller = new ResumesController({ upload } as unknown as ResumesService);
     const app = createUploadApp(controller);
 
-    const response = await request(app)
-      .post('/api/v1/resume/upload')
-      .field('geminiConsentVersion', CURRENT_GEMINI_CONSENT_VERSION)
-      .attach('file', validPdf, {
-        filename: 'resume.pdf',
-        contentType: 'application/pdf',
-      });
+    const response = await request(app).post('/api/v1/resume/upload').attach('file', validPdf, {
+      filename: 'resume.pdf',
+      contentType: 'application/pdf',
+    });
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({
@@ -98,7 +97,6 @@ describe('resume upload consent validation', () => {
         originalname: 'resume.pdf',
         mimetype: 'application/pdf',
       }),
-      CURRENT_GEMINI_CONSENT_VERSION,
     );
   });
 });

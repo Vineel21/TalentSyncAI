@@ -182,8 +182,8 @@ export function RegisterPage() {
           />
         </FormField>
         <p className="text-xs leading-5 text-muted-foreground">
-          By creating an account, you agree to use AI recommendations as decision support and keep a
-          human in the hiring loop.
+          By creating an account, you confirm that you are 18 or older and understand that AI
+          recommendations are decision support; people remain responsible for hiring decisions.
         </p>
         <Button className="w-full" isLoading={form.formState.isSubmitting} type="submit">
           Create account

@@ -5,7 +5,6 @@ import type {
   UserRow,
 } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
-import { CURRENT_GEMINI_CONSENT_VERSION } from '../src/modules/ai/consent.js';
 import type { AiService } from '../src/modules/ai/service.js';
 import type { ResumesRepository } from '../src/modules/resumes/repository.js';
 import { ResumesService } from '../src/modules/resumes/service.js';
@@ -78,9 +77,7 @@ describe('ResumesService', () => {
     expect(repository.findProfile).not.toHaveBeenCalled();
   });
 
-  it('retains previously uploaded objects that may be referenced by applications', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(now));
+  it('retains referenced objects and creates analyses without legacy receipt fields', async () => {
     const profile = {
       resume_path: `${candidateId}/previous.pdf`,
     } as ProfileRow;
@@ -96,47 +93,25 @@ describe('ResumesService', () => {
     } as unknown as ResumesRepository;
     const service = new ResumesService(repository, {} as AiService);
 
-    try {
-      const result = await service.upload(
-        candidateContext,
-        uploadedFile,
-        CURRENT_GEMINI_CONSENT_VERSION,
-      );
+    const result = await service.upload(candidateContext, uploadedFile);
 
-      expect(result.originalFilename).toBe('candidate-resume.pdf');
-      expect(repository.createAnalysis).toHaveBeenCalledWith(
-        expect.objectContaining({
-          user_id: candidateId,
-          original_filename: 'candidate-resume.pdf',
-          status: 'pending',
-          gemini_consent_version: CURRENT_GEMINI_CONSENT_VERSION,
-          gemini_consented_at: now,
-        }),
-      );
-      expect(repository.deleteObject).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(result.originalFilename).toBe('candidate-resume.pdf');
+    expect(repository.createAnalysis).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: candidateId,
+        original_filename: 'candidate-resume.pdf',
+        status: 'pending',
+      }),
+    );
+    const analysisInsert = vi.mocked(repository.createAnalysis).mock.calls[0]?.[0];
+    expect(analysisInsert).not.toHaveProperty('gemini_consent_version');
+    expect(analysisInsert).not.toHaveProperty('gemini_consented_at');
+    expect(repository.deleteObject).not.toHaveBeenCalled();
   });
 
-  it.each([
-    {
-      label: 'has no consent receipt',
-      gemini_consent_version: null,
-      gemini_consented_at: null,
-    },
-    {
-      label: 'has a stale consent version',
-      gemini_consent_version: '2026-07-26',
-      gemini_consented_at: now,
-    },
-    {
-      label: 'has no consent timestamp',
-      gemini_consent_version: CURRENT_GEMINI_CONSENT_VERSION,
-      gemini_consented_at: null,
-    },
-  ])('rejects parsing when the current resume $label', async (receipt) => {
+  it('starts parsing a current resume without legacy receipt metadata', async () => {
     const resumePath = `${candidateId}/current.pdf`;
+    const downloadError = new Error('stop after parse authorization');
     const repository = {
       findProfile: vi.fn().mockResolvedValue({
         resume_path: resumePath,
@@ -145,27 +120,31 @@ describe('ResumesService', () => {
         id: '55555555-5555-4555-8555-555555555555',
         user_id: candidateId,
         storage_path: resumePath,
-        ...receipt,
       }),
-      updateAnalysis: vi.fn(),
-      downloadObject: vi.fn(),
+      updateAnalysis: vi.fn().mockResolvedValue(undefined),
+      downloadObject: vi.fn().mockRejectedValue(downloadError),
     } as unknown as ResumesRepository;
     const aiService = {
       parseResume: vi.fn(),
     } as unknown as AiService;
     const service = new ResumesService(repository, aiService);
 
-    await expect(service.parse(candidateContext)).rejects.toMatchObject({
-      code: 'AI_CONSENT_REQUIRED',
-      statusCode: 400,
-    });
+    await expect(service.parse(candidateContext)).rejects.toBe(downloadError);
     expect(repository.findAnalysisByPath).toHaveBeenCalledWith(
       candidateContext.client,
       candidateId,
       resumePath,
     );
-    expect(repository.updateAnalysis).not.toHaveBeenCalled();
-    expect(repository.downloadObject).not.toHaveBeenCalled();
+    expect(repository.updateAnalysis).toHaveBeenNthCalledWith(
+      1,
+      candidateId,
+      '55555555-5555-4555-8555-555555555555',
+      {
+        status: 'processing',
+        error_message: null,
+      },
+    );
+    expect(repository.downloadObject).toHaveBeenCalledWith(resumePath);
     expect(aiService.parseResume).not.toHaveBeenCalled();
   });
 });

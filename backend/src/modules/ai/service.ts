@@ -4,7 +4,6 @@ import { z, type ZodType } from 'zod';
 import { env } from '../../config/env.js';
 import { AppError, BadRequestError, ServiceUnavailableError } from '../../shared/errors.js';
 import type { AuthenticatedContext } from '../../shared/request-context.js';
-import { assertCurrentGeminiConsent } from './consent.js';
 import type { AiRepository } from './repository.js';
 import { type ApplicationBundle, type MatchBundle } from './repository.js';
 import {
@@ -392,7 +391,6 @@ export class AiService {
         context.user.id,
         input.jobId,
       );
-      assertCurrentGeminiConsent(bundle.resumeConsent);
       return this.gateway.match(bundle);
     }
 
@@ -401,7 +399,6 @@ export class AiService {
     }
     const applicationId = input.applicationId;
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
-    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
       const result = await this.gateway.match(bundle);
@@ -431,7 +428,6 @@ export class AiService {
   ): Promise<CandidateSummaryResult> {
     assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
-    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
       const result = await this.gateway.summarize(bundle);
@@ -455,7 +451,6 @@ export class AiService {
   ): Promise<ResumeFeedbackResult> {
     assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
-    assertCurrentGeminiConsent(bundle.resumeConsent);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
     try {
       const result = await this.gateway.feedback(bundle);

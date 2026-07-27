@@ -2,13 +2,10 @@ import { api, GEMINI_REQUEST_TIMEOUT_MS } from '@/lib/api-client';
 import { getData } from '@/services/api-helpers';
 import type { ApiResponse, ResumeParseResult } from '@/types/api';
 
-const GEMINI_CONSENT_VERSION = '2026-07-27';
-
 export const resumeService = {
   async upload(file: File) {
     const form = new FormData();
     form.append('file', file);
-    form.append('geminiConsentVersion', GEMINI_CONSENT_VERSION);
     return getData(
       (
         await api.post<

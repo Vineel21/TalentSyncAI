@@ -8,7 +8,6 @@ import type {
 import type { DatabaseClient } from '../../config/supabase.js';
 import { serviceSupabase } from '../../config/supabase.js';
 import { NotFoundError, throwDatabaseError } from '../../shared/errors.js';
-import { toGeminiConsentReceipt, type GeminiConsentReceipt } from './consent.js';
 import { resumeParseResultSchema, type ResumeParseResult } from './types.js';
 
 type AnalysisInsert = Database['public']['Tables']['ai_analyses']['Insert'];
@@ -20,13 +19,11 @@ export interface ApplicationBundle {
   profile: ProfileRow;
   resumeText: string | null;
   resumeSnapshot: ResumeParseResult | null;
-  resumeConsent: GeminiConsentReceipt | null;
 }
 
 export interface MatchBundle {
   job: JobRow;
   profile: ProfileRow;
-  resumeConsent: GeminiConsentReceipt | null;
 }
 
 const validatedResumeSnapshot = (
@@ -61,21 +58,7 @@ export class AiRepository {
     if (!jobResult.data) throw new NotFoundError('Open job');
     if (!profileResult.data) throw new NotFoundError('Candidate profile');
 
-    let resumeConsent: GeminiConsentReceipt | null = null;
-    if (profileResult.data.resume_path) {
-      const resumeResult = await client
-        .from('resume_analyses')
-        .select('gemini_consent_version, gemini_consented_at')
-        .eq('user_id', candidateId)
-        .eq('storage_path', profileResult.data.resume_path)
-        .maybeSingle();
-      if (resumeResult.error) {
-        throwDatabaseError(resumeResult.error, 'Unable to load resume consent');
-      }
-      resumeConsent = toGeminiConsentReceipt(resumeResult.data);
-    }
-
-    return { job: jobResult.data, profile: profileResult.data, resumeConsent };
+    return { job: jobResult.data, profile: profileResult.data };
   }
   public async getApplicationBundle(
     client: DatabaseClient,
@@ -108,7 +91,7 @@ export class AiRepository {
 
     const resumeResult = await client
       .from('resume_analyses')
-      .select('status, extracted_text, parsed_data, gemini_consent_version, gemini_consented_at')
+      .select('status, extracted_text, parsed_data')
       .eq('user_id', applicationResult.data.candidate_id)
       .eq('storage_path', applicationResult.data.resume_path)
       .maybeSingle();
@@ -125,7 +108,6 @@ export class AiRepository {
         resumeResult.data?.status,
         resumeResult.data?.parsed_data,
       ),
-      resumeConsent: toGeminiConsentReceipt(resumeResult.data),
     };
   }
 

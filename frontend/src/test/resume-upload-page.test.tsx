@@ -60,7 +60,7 @@ function renderPage() {
   );
 }
 
-describe('ResumeUploadPage Gemini consent', () => {
+describe('ResumeUploadPage Gemini processing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(profileService.getMine).mockResolvedValue(profile);
@@ -75,7 +75,7 @@ describe('ResumeUploadPage Gemini consent', () => {
     vi.mocked(resumeService.parse).mockResolvedValue(parsedResume);
   });
 
-  it('discloses billing-enabled Gemini processing and requires consent before upload', async () => {
+  it('discloses paid Gemini processing and uploads a valid file without a consent gate', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -84,23 +84,19 @@ describe('ResumeUploadPage Gemini consent', () => {
     await user.upload(input, resume);
 
     expect(
-      screen.getByText(/processed only through a billing-enabled Gemini API project/i),
+      screen.getByText(/processed through a billing-enabled Gemini API project/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/not used to improve Google products/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/retain prompts and responses for a limited period/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/authorized application matching/i)).toBeInTheDocument();
-    expect(screen.getByText(/confirm I am 18 or older/i)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 
     const submit = screen.getByRole('button', { name: 'Upload and parse' });
-    expect(submit).toBeDisabled();
+    expect(submit).toBeEnabled();
     expect(resumeService.upload).not.toHaveBeenCalled();
     expect(resumeService.parse).not.toHaveBeenCalled();
-
-    await user.click(
-      screen.getByRole('checkbox', {
-        name: /consent to Google Gemini processing my resume text/i,
-      }),
-    );
-    expect(submit).toBeEnabled();
 
     await user.click(submit);
 
@@ -108,7 +104,7 @@ describe('ResumeUploadPage Gemini consent', () => {
     await waitFor(() => expect(resumeService.parse).toHaveBeenCalledOnce());
   });
 
-  it('requires fresh consent when a different resume is selected', async () => {
+  it('uploads the replacement file immediately when a different resume is selected', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -121,16 +117,19 @@ describe('ResumeUploadPage Gemini consent', () => {
     });
 
     await user.upload(input, firstResume);
-    const consent = screen.getByRole('checkbox', {
-      name: /consent to Google Gemini processing my resume text/i,
-    });
-    await user.click(consent);
-    expect(consent).toBeChecked();
+    expect(screen.getByText('first.pdf')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Upload and parse' })).toBeEnabled();
 
     await user.upload(input, replacementResume);
 
-    expect(consent).not.toBeChecked();
-    expect(screen.getByRole('button', { name: 'Upload and parse' })).toBeDisabled();
+    expect(screen.queryByText('first.pdf')).not.toBeInTheDocument();
+    expect(screen.getByText('replacement.pdf')).toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: 'Upload and parse' });
+    expect(submit).toBeEnabled();
+
+    await user.click(submit);
+
+    await waitFor(() => expect(resumeService.upload).toHaveBeenCalledWith(replacementResume));
+    await waitFor(() => expect(resumeService.parse).toHaveBeenCalledOnce());
   });
 });

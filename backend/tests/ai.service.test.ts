@@ -21,7 +21,6 @@ vi.mock('@google/genai', () => ({
 import { env } from '../src/config/env.js';
 import type { ApplicationRow, JobRow, ProfileRow, UserRow } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
-import { CURRENT_GEMINI_CONSENT_VERSION } from '../src/modules/ai/consent.js';
 import type { AiRepository, ApplicationBundle, MatchBundle } from '../src/modules/ai/repository.js';
 import { AiService } from '../src/modules/ai/service.js';
 import type { AuthenticatedContext } from '../src/shared/request-context.js';
@@ -124,21 +123,15 @@ const snapshotResume = {
   summary: 'Submitted snapshot summary.',
   skills: ['Submitted Snapshot Skill'],
 };
-const currentResumeConsent = {
-  version: CURRENT_GEMINI_CONSENT_VERSION,
-  consentedAt: now,
-};
 
 const applicationBundle = (
   resumeSnapshot: ApplicationBundle['resumeSnapshot'],
-  resumeConsent: ApplicationBundle['resumeConsent'] = currentResumeConsent,
 ): ApplicationBundle => ({
   application,
   job,
   profile: mutableProfile,
   resumeText: 'Submitted immutable resume text.',
   resumeSnapshot,
-  resumeConsent,
 });
 
 const createRepositorySpies = () => ({
@@ -151,30 +144,6 @@ const createRepositorySpies = () => ({
 
 const rateLimitError = (): Error & { status: number } =>
   Object.assign(new Error('Provider rate limit'), { status: 429 });
-
-const invalidConsentReceipts: Array<{
-  label: string;
-  receipt: MatchBundle['resumeConsent'];
-}> = [
-  {
-    label: 'missing',
-    receipt: null,
-  },
-  {
-    label: 'stale',
-    receipt: {
-      version: '2026-07-26',
-      consentedAt: now,
-    },
-  },
-  {
-    label: 'missing its timestamp',
-    receipt: {
-      version: CURRENT_GEMINI_CONSENT_VERSION,
-      consentedAt: null,
-    },
-  },
-];
 
 describe('AiService Gemini gateway', () => {
   beforeEach(() => {
@@ -407,90 +376,81 @@ describe('AiService Gemini gateway', () => {
     expect(geminiSdk.create).not.toHaveBeenCalled();
   });
 
-  it.each(invalidConsentReceipts)(
-    'rejects candidate matching when current-resume consent is $label',
-    async ({ receipt }) => {
+  it('runs candidate matching with a profile and job bundle that has no receipt fields', async () => {
+    const matchResult = {
+      score: 85,
+      matchingSkills: ['TypeScript'],
+      missingSkills: ['PostgreSQL'],
+      recommendation: 'good_match',
+      rationale: 'The candidate has the core TypeScript skill.',
+    } as const;
+    geminiSdk.create.mockResolvedValue({ output_text: JSON.stringify(matchResult) });
+    const repository = createRepositorySpies();
+    repository.getCandidateJobBundle.mockResolvedValue({
+      job,
+      profile: mutableProfile,
+    } satisfies MatchBundle);
+    const service = new AiService(repository);
+
+    await expect(
+      service.calculateMatch(candidateContext, {
+        jobId: job.id,
+      }),
+    ).resolves.toEqual(matchResult);
+    expect(repository.getCandidateJobBundle).toHaveBeenCalledWith(
+      candidateContext.client,
+      candidateContext.user.id,
+      job.id,
+    );
+    expect(geminiSdk.create).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [
+      'match',
+      {
+        score: 85,
+        matchingSkills: ['TypeScript'],
+        missingSkills: ['PostgreSQL'],
+        recommendation: 'good_match',
+        rationale: 'The submitted resume supports the core requirement.',
+      },
+    ],
+    ['summary', { summary: 'A backend engineer with production TypeScript experience.' }],
+    [
+      'feedback',
+      {
+        grammar: [],
+        ats: ['Add measurable outcomes.'],
+        skills: [],
+        projects: [],
+        formatting: [],
+        achievements: ['Quantify production impact.'],
+      },
+    ],
+  ] as const)(
+    'runs recruiter %s generation with application evidence that has no receipt fields',
+    async (operation, providerResult) => {
+      geminiSdk.create.mockResolvedValue({ output_text: JSON.stringify(providerResult) });
       const repository = createRepositorySpies();
-      repository.getCandidateJobBundle.mockResolvedValue({
-        job,
-        profile: mutableProfile,
-        resumeConsent: receipt,
-      } satisfies MatchBundle);
+      repository.getApplicationBundle.mockResolvedValue(applicationBundle(snapshotResume));
       const service = new AiService(repository);
 
-      await expect(
-        service.calculateMatch(candidateContext, {
-          jobId: job.id,
-        }),
-      ).rejects.toMatchObject({
-        code: 'AI_CONSENT_REQUIRED',
-        statusCode: 400,
-      });
-      expect(repository.getCandidateJobBundle).toHaveBeenCalledWith(
-        candidateContext.client,
-        candidateContext.user.id,
-        job.id,
-      );
-      expect(geminiSdk.create).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(['match', 'summary', 'feedback'] as const)(
-    'rejects recruiter %s generation when the exact application resume lacks current consent',
-    async (operation) => {
-      const repository = createRepositorySpies();
-      repository.getApplicationBundle.mockResolvedValue(applicationBundle(snapshotResume, null));
-      const service = new AiService(repository);
-
-      const request =
+      const analysis =
         operation === 'match'
           ? service.calculateMatch(recruiterContext, { applicationId })
           : operation === 'summary'
             ? service.generateSummary(recruiterContext, applicationId)
             : service.generateFeedback(recruiterContext, applicationId);
 
-      await expect(request).rejects.toMatchObject({
-        code: 'AI_CONSENT_REQUIRED',
-        statusCode: 400,
-      });
+      await expect(analysis).resolves.toEqual(providerResult);
       expect(repository.getApplicationBundle).toHaveBeenCalledWith(
         recruiterContext.client,
         applicationId,
       );
-      expect(repository.beginAnalysis).not.toHaveBeenCalled();
-      expect(repository.updateAnalysis).not.toHaveBeenCalled();
-      expect(repository.updateMatchScore).not.toHaveBeenCalled();
-      expect(geminiSdk.create).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(['match', 'summary', 'feedback'] as const)(
-    'rejects recruiter %s generation when the exact application resume consent is stale',
-    async (operation) => {
-      const repository = createRepositorySpies();
-      repository.getApplicationBundle.mockResolvedValue(
-        applicationBundle(snapshotResume, {
-          version: '2026-07-26',
-          consentedAt: now,
-        }),
-      );
-      const service = new AiService(repository);
-
-      const request =
-        operation === 'match'
-          ? service.calculateMatch(recruiterContext, { applicationId })
-          : operation === 'summary'
-            ? service.generateSummary(recruiterContext, applicationId)
-            : service.generateFeedback(recruiterContext, applicationId);
-
-      await expect(request).rejects.toMatchObject({
-        code: 'AI_CONSENT_REQUIRED',
-        statusCode: 400,
-      });
-      expect(repository.beginAnalysis).not.toHaveBeenCalled();
-      expect(repository.updateAnalysis).not.toHaveBeenCalled();
-      expect(repository.updateMatchScore).not.toHaveBeenCalled();
-      expect(geminiSdk.create).not.toHaveBeenCalled();
+      expect(repository.beginAnalysis).toHaveBeenCalledWith(applicationId, 'gemini-3.6-flash');
+      expect(repository.updateAnalysis).toHaveBeenCalled();
+      expect(geminiSdk.create).toHaveBeenCalledTimes(1);
     },
   );
 
