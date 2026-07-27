@@ -124,6 +124,27 @@ docs/                     Product and technical documentation
 
    The frontend runs at `http://localhost:5173`; the API health check is `http://localhost:4000/api/v1/health`.
 
+## Demo test data
+
+With a connected project configured in `backend/.env`, seed isolated candidate
+and recruiter test accounts, private PDF resumes, jobs, applications, AI
+fixtures, notifications, and recruiter analytics:
+
+```bash
+npm run seed:demo --workspace backend -- --apply
+```
+
+The command generates strong credentials at runtime and prints them only after
+all accounts can log in and every seeded record and resume object has been
+verified. Reserved accounts are marked in protected Auth app metadata. The
+script refuses to modify a matching email without that marker and resets only
+the marked demo accounts' fixture data. To use one known test-only password
+instead, set `DEMO_SEED_PASSWORD` in the process environment for that run; never
+commit it to the repository.
+
+The application status enum uses `offer` as the successful/accepted state.
+There is no separate `accepted` or `hired` status in the current MVP.
+
 ## Quality gates
 
 ```bash
