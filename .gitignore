@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Builds and coverage
+dist/
+coverage/
+.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# Local deployment metadata
+.vercel/

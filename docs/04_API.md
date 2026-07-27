@@ -1,195 +1,80 @@
-# REST API Specification
+# REST API
 
-Base URL
+Base path: `/api/v1`
 
-/api/v1
+All request bodies, path parameters, and query strings are validated with Zod. Successful responses use `{ "success": true, "message": "...", "data": ... }`; errors use `{ "success": false, "message": "...", "error": { "code": "..." } }`.
 
-Response Format
+## Health
 
-{
-"success":true,
-"message":"Success",
-"data":{}
-}
+- `GET /health` - public API health check
 
----
+## Authentication
 
-# Authentication
+- `POST /auth/register` - create a candidate or recruiter account
+- `POST /auth/login` - authenticate and set the refresh cookie
+- `POST /auth/refresh` - rotate the refresh session and return a new access token
+- `POST /auth/logout` - revoke the current session and clear the cookie
+- `GET /auth/me` - return the authenticated user
 
-POST /auth/register
+The access token is returned in the response and sent as `Authorization: Bearer <token>`. The refresh token is stored only in a secure, HTTP-only cookie.
 
-POST /auth/login
+## Profile
 
-POST /auth/logout
+- `GET /profile` - candidate's own profile
+- `PUT /profile` - update candidate profile
+- `GET /profile/:id` - recruiter access to a candidate who applied to one of their jobs
 
-GET /auth/me
+## Resume
 
-POST /auth/refresh
+- `POST /resume/upload` - candidate PDF upload as `multipart/form-data` field `file`; maximum 5 MiB
+- `POST /resume/parse` - parse the candidate's uploaded resume and persist structured analysis
+- `GET /resume/download` - authorized private download; candidates use their own file, recruiters pass `applicationId`
 
----
+## Jobs
 
-# Profile
+- `GET /jobs` - public open-job discovery or role-aware authenticated listing
+- `GET /jobs/:id` - public open-job details, recruiter-owned jobs, or candidate application history
+- `POST /jobs` - recruiter creates a job
+- `PUT /jobs/:id` - recruiter updates an owned job
+- `PATCH /jobs/:id/status` - recruiter changes job status
+- `DELETE /jobs/:id` - recruiter soft-deletes an owned job
 
-GET /profile
+Supported list query fields include `page`, `limit`, `search`, `location`, `skills`, `salary`, `employmentType`, and recruiter-aware `status`.
 
-PUT /profile
+## Applications
 
-GET /profile/:id
+- `POST /applications` - candidate applies to an open job
+- `GET /applications` - role-aware paginated list
+- `GET /applications/:id` - authorized application details
+- `PATCH /applications/:id/status` - recruiter updates pipeline status
+- `PATCH /applications/:id/withdraw` - candidate withdraws an application
+- `DELETE /applications/:id` - compatibility alias for candidate withdrawal
 
-DELETE /profile
+Application statuses are `applied`, `under_review`, `shortlisted`, `interview`, `rejected`, `offer`, and `withdrawn`.
 
----
+## AI
 
-# Resume
+- `POST /ai/match-score` - candidate job match by `jobId`, or recruiter persisted analysis by `applicationId`
+- `POST /ai/candidate-summary` - recruiter summary by `applicationId`
+- `POST /ai/resume-feedback` - authorized structured resume feedback by `applicationId`
 
-POST /resume/upload
+AI calls run only in the backend and return schema-validated structured output.
 
-Request
+## Dashboard
 
-multipart/form-data
+- `GET /dashboard` - candidate or recruiter dashboard, selected from the authenticated role
 
-file
+## Notifications
 
-Response
+- `GET /notifications` - paginated authenticated notification list
+- `PATCH /notifications/read-all` - mark all notifications read
+- `PATCH /notifications/read` - mark the supplied notification IDs read
+- `PATCH /notifications/:id/read` - mark one notification read
+- `DELETE /notifications/:id` - delete one owned notification
 
-resume_url
+## Authorization summary
 
-POST /resume/parse
-
-Returns
-
-summary
-
-skills
-
-education
-
-experience
-
-certifications
-
-profile_completion
-
----
-
-# Jobs
-
-GET /jobs
-
-Supports
-
-search
-
-page
-
-limit
-
-location
-
-skills
-
-salary
-
-employment_type
-
-GET /jobs/:id
-
-POST /jobs
-
-PUT /jobs/:id
-
-DELETE /jobs/:id
-
-PATCH /jobs/:id/status
-
----
-
-# Applications
-
-POST /applications
-
-GET /applications
-
-GET /applications/:id
-
-PATCH /applications/:id/status
-
-DELETE /applications/:id
-
----
-
-# Recruiter Dashboard
-
-GET /dashboard
-
-Returns
-
-Total Jobs
-
-Total Applicants
-
-Pending
-
-Interview
-
-Rejected
-
-Offers
-
-Analytics
-
----
-
-# AI
-
-POST /ai/match-score
-
-Input
-
-Candidate Profile
-
-Job Description
-
-Output
-
-Match Score
-
-Matching Skills
-
-Missing Skills
-
-Recommendation
-
----
-
-POST /ai/candidate-summary
-
-Returns
-
-Professional Summary
-
----
-
-POST /ai/resume-feedback
-
-Returns
-
-Suggestions
-
-Grammar
-
-ATS
-
-Skills
-
-Projects
-
----
-
-# Notifications
-
-GET /notifications
-
-PATCH /notifications/read
-
-DELETE /notifications/:id
+- Anonymous users can read only open, unexpired, non-deleted jobs.
+- Candidates can manage only their profile, resume, applications, and notifications.
+- Recruiters can manage only their jobs and see candidates/applications attached to those jobs.
+- PostgreSQL RLS enforces the same ownership rules beneath the API.

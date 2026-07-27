@@ -1,0 +1,10 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '4001';
+process.env.FRONTEND_URL = 'http://localhost:5173';
+process.env.SUPABASE_URL = 'https://example.supabase.co';
+process.env.SUPABASE_PUBLISHABLE_KEY = 'test-publishable-key';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+process.env.SUPABASE_RESUME_BUCKET = 'resume-files';
+process.env.OPENAI_API_KEY = '';
+process.env.OPENAI_MODEL = 'gpt-5.6-sol';
+process.env.LOG_FORMAT = 'tiny';

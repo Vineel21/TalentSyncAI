@@ -1,179 +1,74 @@
-# Supabase Configuration
+# Supabase configuration
 
-Project Name
+TalentSync uses Supabase Auth, PostgreSQL, and private Storage. The browser does not use a Supabase client; all access flows through the Express API.
 
-TalentSync AI
+## Project
 
----
+- Hosted project reference: `ouxjdcgbeljmysfwifgd`
+- Storage bucket: `resume-files`
+- Bucket visibility: private
+- Allowed upload: validated PDF
+- Maximum file size: 5 MiB
 
-# Authentication
+## Schema
 
-Email Password
+The initial migration creates:
 
-Enabled
+- `users`
+- `profiles`
+- `jobs`
+- `applications`
+- `resume_analyses`
+- `ai_analyses`
+- `notifications`
 
-Google OAuth
+It also defines enums, foreign keys, checks, indexes, update timestamps, profile-completion calculation, job publication timestamps, signup synchronization, application notifications, explicit grants, RLS policies, and private storage policies.
 
-Optional
+## Authentication
 
-GitHub OAuth
+Email/password authentication is supported for `candidate` and `recruiter` accounts. A signup trigger copies the requested role into the trusted `public.users` record once. Runtime authorization always reads that database role and does not trust mutable client metadata.
 
-Optional
+Configure the production frontend as the Supabase Auth site URL and add it to allowed redirect URLs. Email confirmation can be enabled in the hosted Auth settings.
 
-Email Verification
+## Environment variables
 
-Enabled
+Backend:
 
-Password Reset
+```dotenv
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+SUPABASE_RESUME_BUCKET=resume-files
+```
 
-Enabled
+No Supabase key belongs in the frontend environment. `SUPABASE_SERVICE_ROLE_KEY` must never be exposed to a browser, log, or committed file.
 
----
+## Local workflow
 
-# Storage
+```bash
+npx supabase start
+npx supabase db reset --local
+```
 
-Bucket
+The reset applies all files in `supabase/migrations` and then runs `supabase/seed.sql`. The seed adds example jobs only if a recruiter account already exists; it never creates an Auth identity.
 
-resume-files
+## Hosted workflow
 
-Private
+```bash
+npx supabase link --project-ref <project-ref>
+npx supabase db push
+```
 
-Allowed Files
+Use a new timestamped migration for every subsequent change. Do not edit an already deployed migration.
 
-PDF
+## Security model
 
-Maximum
-
-5 MB
-
----
-
-# Environment Variables
-
-Frontend
-
-VITE_SUPABASE_URL
-
-VITE_SUPABASE_ANON_KEY
-
-Backend
-
-SUPABASE_URL
-
-SUPABASE_SERVICE_ROLE_KEY
-
-OPENAI_API_KEY
-
-JWT_SECRET
-
-PORT
-
----
-
-# Security
-
-Never expose
-
-Service Role Key
-
-Frontend uses
-
-Anon Key
-
-Backend uses
-
-Service Role
-
----
-
-# Row Level Policies
-
-Profiles
-
-User
-
-Own profile only
-
-Recruiter
-
-Read applicants
-
-Jobs
-
-Recruiter
-
-Own jobs
-
-Candidate
-
-Read only
-
-Applications
-
-Candidate
-
-Own applications
-
-Recruiter
-
-Applications for own jobs
-
----
-
-# Database Triggers
-
-When user registers
-
-↓
-
-Create profile automatically
-
-When application created
-
-↓
-
-Generate notification
-
-When resume uploaded
-
-↓
-
-Call AI parser
-
-↓
-
-Store AI analysis
-
----
-
-# Storage Flow
-
-Candidate Upload
-
-↓
-
-Supabase Storage
-
-↓
-
-URL returned
-
-↓
-
-Express downloads
-
-↓
-
-pdf-parse
-
-↓
-
-OpenAI
-
-↓
-
-Structured JSON
-
-↓
-
-Store profile
+- RLS is enabled on every public table.
+- Anonymous grants are restricted to public job discovery.
+- Authenticated grants expose only the columns required by repositories.
+- Policies include explicit roles and both `USING` and `WITH CHECK` where applicable.
+- Ownership checks use `(select auth.uid())` to avoid per-row re-evaluation.
+- Candidates retain read access to jobs referenced by their application history.
+- Recruiters can read candidate data and resume objects only through applications to recruiter-owned jobs.
+- Resume paths are immutable application snapshots so later candidate uploads do not change historical applications.
+- Storage object names are scoped by candidate UUID and the bucket remains private.

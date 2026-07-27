@@ -1,0 +1,8 @@
+.agents/
+docs/
+*.md
+node_modules/
+dist/
+coverage/
+supabase/
+skills-lock.json

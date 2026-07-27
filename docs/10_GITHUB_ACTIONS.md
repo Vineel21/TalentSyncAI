@@ -1,127 +1,41 @@
 # GitHub Actions
 
-Workflow Name
+The workflow in `.github/workflows/ci.yml` runs for pull requests and pushes to `main`.
 
-CI/CD Pipeline
+## Application job
 
-Trigger
+1. Check out the repository.
+2. Install Node.js 22 with npm caching.
+3. Run `npm ci` from the workspace lockfile.
+4. Check formatting.
+5. Run ESLint.
+6. Type-check frontend, backend, and tests.
+7. Run Vitest unit and integration tests.
+8. Build both production applications.
 
-Push to main
+## Database job
 
-Pull Request
+1. Install the pinned Supabase CLI.
+2. Start the local Supabase stack.
+3. Rebuild the database from migrations and seed data.
+4. Stop the stack even when verification fails.
 
----
+This catches invalid SQL, migration ordering errors, RLS creation errors, and drift between a clean database and the committed schema.
 
-# Frontend Pipeline
+## Deployment
 
-Checkout
+Production deployment configuration is committed separately:
 
-↓
+- `vercel.json` for the frontend
+- `render.yaml` and `backend/Dockerfile` for the API
 
-Install Node
+Render can be configured to auto-deploy only after GitHub checks pass. Vercel should also require successful checks for production promotion.
 
-↓
+Runtime credentials belong in the deployment provider, not GitHub or the repository:
 
-Install Dependencies
-
-↓
-
-Run ESLint
-
-↓
-
-Run Build
-
-↓
-
-Deploy to Vercel
-
----
-
-# Backend Pipeline
-
-Checkout
-
-↓
-
-Install Node
-
-↓
-
-Install Dependencies
-
-↓
-
-Run Type Check
-
-↓
-
-Run Lint
-
-↓
-
-Run Build
-
-↓
-
-Deploy to Render
-
----
-
-# Secrets
-
-VITE_SUPABASE_URL
-
-VITE_SUPABASE_ANON_KEY
-
-SUPABASE_URL
-
-SUPABASE_SERVICE_ROLE_KEY
-
-OPENAI_API_KEY
-
-JWT_SECRET
-
-VERCEL_TOKEN
-
-VERCEL_PROJECT_ID
-
-VERCEL_ORG_ID
-
-RENDER_API_KEY
-
-RENDER_SERVICE_ID
-
----
-
-# Build Rules
-
-No warnings
-
-No failed lint
-
-No failed TypeScript
-
-No failed tests
-
----
-
-# Deployment
-
-Frontend
-
-Vercel Production
-
-Backend
-
-Render Production
-
----
-
-# Notifications
-
-GitHub Status
-
-Deployment Success
-
-Deployment Failed
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY`
+- `FRONTEND_URL`
+- `VITE_API_URL`

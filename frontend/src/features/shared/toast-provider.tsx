@@ -1,0 +1,85 @@
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { CheckCircle2, X, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+interface Toast {
+  id: number;
+  title: string;
+  description?: string;
+  variant: 'success' | 'error';
+}
+
+interface ToastContextValue {
+  success: (title: string, description?: string) => void;
+  error: (title: string, description?: string) => void;
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const push = useCallback((variant: Toast['variant'], title: string, description?: string) => {
+    const id = Date.now();
+    setToasts((current) => [...current, { id, title, description, variant }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 4500);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      success: (title: string, description?: string) => push('success', title, description),
+      error: (title: string, description?: string) => push('error', title, description),
+    }),
+    [push],
+  );
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <div
+        aria-live="polite"
+        className="fixed right-4 top-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3"
+      >
+        {toasts.map((toast) => (
+          <div
+            className="flex gap-3 rounded-xl border bg-card p-4 shadow-xl"
+            key={toast.id}
+            role={toast.variant === 'error' ? 'alert' : 'status'}
+          >
+            {toast.variant === 'success' ? (
+              <CheckCircle2
+                aria-hidden="true"
+                className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+              />
+            ) : (
+              <XCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{toast.title}</p>
+              {toast.description ? (
+                <p className="mt-1 text-sm text-muted-foreground">{toast.description}</p>
+              ) : null}
+            </div>
+            <Button
+              aria-label="Dismiss notification"
+              className="-mr-2 -mt-2 h-8 w-8"
+              onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
+              size="icon"
+              variant="ghost"
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) throw new Error('useToast must be used inside ToastProvider.');
+  return context;
+}
