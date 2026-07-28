@@ -80,14 +80,15 @@ jobs:
       - name: Smoke-check production application
         shell: bash
         env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          # Generated deployment URLs can be protected by Vercel SSO; verify the public alias.
+          PRODUCTION_URL: https://talentsync-ai-chi.vercel.app
         run: |
           curl --fail --silent --show-error --location --max-time 30 \
-            "$DEPLOYMENT_URL" > /dev/null
+            "$PRODUCTION_URL" > /dev/null
 
           for attempt in {1..12}; do
             if curl --fail --silent --show-error --location --max-time 30 \
-              "$DEPLOYMENT_URL/api/v1/health" |
+              "$PRODUCTION_URL/api/v1/health" |
               node -e "
                 let body = '';
                 process.stdin.setEncoding('utf8');
