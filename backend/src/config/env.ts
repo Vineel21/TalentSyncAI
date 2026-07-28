@@ -25,6 +25,7 @@ const environmentSchema = z
     GEMINI_MODEL: z.string().min(1).default('gemini-3.6-flash'),
     GEMINI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
     GEMINI_SERVICE_TIER: z.enum(['unpaid', 'paid']).default('unpaid'),
+    AI_PROCESSING_MODE: z.enum(['assessment', 'live']).default('assessment'),
     COOKIE_DOMAIN: z
       .string()
       .optional()
@@ -33,18 +34,18 @@ const environmentSchema = z
     LOG_FORMAT: z.string().min(1).default('dev'),
   })
   .superRefine((value, context) => {
-    if (value.NODE_ENV === 'production' && !value.GEMINI_API_KEY) {
+    if (value.AI_PROCESSING_MODE === 'live' && !value.GEMINI_API_KEY) {
       context.addIssue({
         code: 'custom',
         path: ['GEMINI_API_KEY'],
-        message: 'Required when NODE_ENV is production',
+        message: 'Required when AI_PROCESSING_MODE is live',
       });
     }
-    if (value.NODE_ENV === 'production' && value.GEMINI_SERVICE_TIER !== 'paid') {
+    if (value.AI_PROCESSING_MODE === 'live' && value.GEMINI_SERVICE_TIER !== 'paid') {
       context.addIssue({
         code: 'custom',
         path: ['GEMINI_SERVICE_TIER'],
-        message: 'Must be paid in production before candidate data can be sent to Gemini',
+        message: 'Must be paid when AI_PROCESSING_MODE is live',
       });
     }
   });

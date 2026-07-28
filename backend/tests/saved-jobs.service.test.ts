@@ -71,10 +71,7 @@ describe('SavedJobsService', () => {
     repository.findOpenJob.mockResolvedValue(job);
     repository.find.mockResolvedValue(null);
     repository.save.mockResolvedValue(savedJob);
-    const service = new SavedJobsService(
-      repository,
-      () => new Date(now),
-    );
+    const service = new SavedJobsService(repository, () => new Date(now));
 
     await expect(service.save(context, job.id)).resolves.toMatchObject({
       job: { id: job.id },

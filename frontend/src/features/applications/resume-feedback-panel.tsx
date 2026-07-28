@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, FileSearch, LoaderCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { isLiveAiProcessingEnabled } from '@/config/ai-processing';
 import { useToast } from '@/features/shared/toast-provider';
 import { errorMessage } from '@/lib/utils';
 import { aiService } from '@/services/ai.service';
@@ -53,6 +54,7 @@ export function ResumeFeedbackPanel({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const liveAiProcessingEnabled = isLiveAiProcessingEnabled();
   const feedback = useMutation({
     mutationFn: () => aiService.resumeFeedback(applicationId),
     onSuccess: () => {
@@ -76,24 +78,37 @@ export function ResumeFeedbackPanel({
             Structured suggestions based on the resume submitted with this application.
           </p>
         </div>
-        <Button
-          isLoading={feedback.isPending}
-          onClick={() => feedback.mutate()}
-          size="sm"
-          variant="outline"
-        >
-          <Sparkles aria-hidden="true" className="h-4 w-4" />
-          {feedback.isPending
-            ? currentFeedback
-              ? 'Refreshing feedback'
-              : 'Generating feedback'
-            : currentFeedback
-              ? 'Regenerate feedback'
-              : 'Generate feedback'}
-        </Button>
+        {liveAiProcessingEnabled ? (
+          <Button
+            isLoading={feedback.isPending}
+            onClick={() => feedback.mutate()}
+            size="sm"
+            variant="outline"
+          >
+            <Sparkles aria-hidden="true" className="h-4 w-4" />
+            {feedback.isPending
+              ? currentFeedback
+                ? 'Refreshing feedback'
+                : 'Generating feedback'
+              : currentFeedback
+                ? 'Regenerate feedback'
+                : 'Generate feedback'}
+          </Button>
+        ) : null}
       </div>
 
-      {feedback.isError ? (
+      {!liveAiProcessingEnabled ? (
+        <p
+          className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+          role="status"
+        >
+          {currentFeedback
+            ? 'Showing stored synthetic feedback. Live regeneration is paused in assessment mode.'
+            : 'No stored feedback fixture is available. Live generation is paused in assessment mode.'}
+        </p>
+      ) : null}
+
+      {liveAiProcessingEnabled && feedback.isError ? (
         <Card
           aria-label="Resume feedback unavailable"
           className="mt-4 border-red-200 bg-red-50/50 p-4 dark:border-red-900 dark:bg-red-950/20"
@@ -120,7 +135,7 @@ export function ResumeFeedbackPanel({
         </Card>
       ) : null}
 
-      {feedback.isPending && !currentFeedback ? (
+      {liveAiProcessingEnabled && feedback.isPending && !currentFeedback ? (
         <Card
           aria-label="Generating resume feedback"
           className="mt-4 flex min-h-36 items-center justify-center border-blue-200 bg-blue-50/50 p-6 text-center dark:border-blue-900 dark:bg-blue-950/20"
@@ -183,7 +198,7 @@ export function ResumeFeedbackPanel({
             resume and the requirements of the role.
           </p>
         </>
-      ) : feedback.isError ? null : (
+      ) : liveAiProcessingEnabled && feedback.isError ? null : (
         <Card className="mt-4 flex min-h-36 items-center gap-4 border-dashed p-5">
           <div className="rounded-full bg-muted p-3">
             <FileSearch aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
@@ -191,7 +206,9 @@ export function ResumeFeedbackPanel({
           <div>
             <p className="font-semibold">No resume feedback yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Generate feedback to review concrete strengths and improvement opportunities.
+              {liveAiProcessingEnabled
+                ? 'Generate feedback to review concrete strengths and improvement opportunities.'
+                : 'This application does not include a stored feedback fixture.'}
             </p>
           </div>
         </Card>

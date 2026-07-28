@@ -175,13 +175,13 @@ export function CandidateDashboardPage() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold">Recommended jobs</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Open roles aligned to your current profile.
             </p>
           </div>
-          <Link className="text-sm font-semibold text-primary hover:underline" to="/jobs">
+          <Link className="shrink-0 text-sm font-semibold text-primary hover:underline" to="/jobs">
             View all
           </Link>
         </div>
@@ -217,7 +217,7 @@ export function CandidateDashboardPage() {
 
       <section aria-labelledby="saved-jobs-heading">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold" id="saved-jobs-heading">
               Saved jobs
             </h2>
@@ -225,7 +225,7 @@ export function CandidateDashboardPage() {
               Roles you want to revisit before applying.
             </p>
           </div>
-          <Link className="text-sm font-semibold text-primary hover:underline" to="/jobs">
+          <Link className="shrink-0 text-sm font-semibold text-primary hover:underline" to="/jobs">
             Browse jobs
           </Link>
         </div>
@@ -265,12 +265,12 @@ export function CandidateDashboardPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <Link
-                      className="text-lg font-bold hover:text-primary"
+                      className="break-words text-lg font-bold hover:text-primary [overflow-wrap:anywhere]"
                       to={`/jobs/${savedJob.job.id}`}
                     >
                       {savedJob.job.title}
                     </Link>
-                    <p className="mt-1 text-sm font-medium text-muted-foreground">
+                    <p className="mt-1 break-words text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
                       {savedJob.job.companyName}
                     </p>
                   </div>
@@ -294,13 +294,16 @@ export function CandidateDashboardPage() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold">Recent applications</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               The latest movement in your search.
             </p>
           </div>
-          <Link className="text-sm font-semibold text-primary hover:underline" to="/applications">
+          <Link
+            className="shrink-0 text-sm font-semibold text-primary hover:underline"
+            to="/applications"
+          >
             Track all
           </Link>
         </div>

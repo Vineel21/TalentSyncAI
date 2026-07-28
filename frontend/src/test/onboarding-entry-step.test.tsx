@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingStepper } from '@/features/onboarding/onboarding-stepper';
 import { DataExtractionStep } from '@/features/onboarding/steps/data-extraction-step';
 import { resumeService } from '@/services/resume.service';
@@ -31,6 +31,7 @@ function renderEntry(onContinue = vi.fn().mockResolvedValue(undefined)) {
 
 describe('candidate onboarding entry and progress UI', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_AI_PROCESSING_MODE', 'live');
     vi.clearAllMocks();
     vi.mocked(resumeService.upload).mockResolvedValue({
       resume: {
@@ -46,6 +47,10 @@ describe('candidate onboarding entry and progress UI', () => {
       experience: [],
       certifications: [],
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('supports the manual path and explains the later resume requirement', async () => {
@@ -72,6 +77,23 @@ describe('candidate onboarding entry and progress UI', () => {
     await waitFor(() => expect(resumeService.parse).toHaveBeenCalledOnce());
     await waitFor(() => expect(onContinue).toHaveBeenCalledWith('resume'));
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('keeps manual onboarding available without accepting resume data in assessment mode', async () => {
+    vi.stubEnv('VITE_AI_PROCESSING_MODE', 'assessment');
+    const user = userEvent.setup();
+    const onContinue = renderEntry();
+
+    expect(screen.getByText(/resume parsing paused for this public demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/no newly uploaded resume or profile data/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Resume PDF')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /choose pdf/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /continue with manual entry/i }));
+
+    expect(onContinue).toHaveBeenCalledWith('manual');
+    expect(resumeService.upload).not.toHaveBeenCalled();
+    expect(resumeService.parse).not.toHaveBeenCalled();
   });
 
   it('announces the current step and only enables backward navigation', async () => {

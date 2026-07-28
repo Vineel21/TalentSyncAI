@@ -35,13 +35,15 @@ export function EmptyState({
   icon?: LucideIcon;
 }) {
   return (
-    <Card className="flex min-h-60 flex-col items-center justify-center border-dashed p-8 text-center">
+    <Card className="flex min-h-60 flex-col items-center justify-center border-dashed p-5 text-center sm:p-8">
       <div className="mb-4 rounded-full bg-muted p-3">
         <Icon aria-hidden="true" className="h-6 w-6 text-muted-foreground" />
       </div>
-      <h2 className="text-lg font-bold">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
-      {action ? <div className="mt-5">{action}</div> : null}
+      <h2 className="break-words text-lg font-bold [overflow-wrap:anywhere]">{title}</h2>
+      <p className="mt-2 max-w-md break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+        {description}
+      </p>
+      {action ? <div className="mt-5 w-full sm:w-auto">{action}</div> : null}
     </Card>
   );
 }
@@ -56,12 +58,14 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <Card className="flex min-h-60 flex-col items-center justify-center border-red-200 p-8 text-center">
+    <Card className="flex min-h-60 flex-col items-center justify-center border-red-200 p-5 text-center sm:p-8">
       <div className="mb-4 rounded-full bg-red-50 p-3 dark:bg-red-950">
         <AlertTriangle aria-hidden="true" className="h-6 w-6 text-destructive" />
       </div>
-      <h2 className="text-lg font-bold">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">{message}</p>
+      <h2 className="break-words text-lg font-bold [overflow-wrap:anywhere]">{title}</h2>
+      <p className="mt-2 max-w-md break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+        {message}
+      </p>
       {onRetry ? (
         <Button className="mt-5" onClick={onRetry} variant="outline">
           <RefreshCw aria-hidden="true" className="h-4 w-4" />

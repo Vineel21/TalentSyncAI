@@ -24,11 +24,11 @@ export function JobCard({
 
   return (
     <Card className="group flex h-full flex-col p-5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:hover:border-blue-900">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-primary dark:from-slate-800 dark:to-blue-950">
           <BriefcaseBusiness aria-hidden="true" className="h-5 w-5" />
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex min-w-0 flex-wrap justify-end gap-2">
           {job.matchScore !== null && job.matchScore !== undefined ? (
             <Badge variant={job.matchScore >= 75 ? 'success' : 'warning'}>
               {job.matchScore}% match
@@ -37,13 +37,18 @@ export function JobCard({
           <Badge variant="secondary">{friendlyLabel(job.employmentType)}</Badge>
         </div>
       </div>
-      <div className="mt-4 flex-1">
-        <Link className="text-lg font-bold tracking-tight hover:text-primary" to={detailsPath}>
+      <div className="mt-4 min-w-0 flex-1">
+        <Link
+          className="break-words text-lg font-bold tracking-tight hover:text-primary [overflow-wrap:anywhere]"
+          to={detailsPath}
+        >
           {job.title}
         </Link>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">{job.companyName}</p>
+        <p className="mt-1 break-words text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+          {job.companyName}
+        </p>
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex min-w-0 items-center gap-1.5 break-words [overflow-wrap:anywhere]">
             <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
             {job.location}
           </span>
@@ -64,8 +69,8 @@ export function JobCard({
           ) : null}
         </div>
       </div>
-      <div className="mt-5 flex items-center gap-2">
-        <Button asChild className="flex-1" variant="outline">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Button asChild className="min-w-32 flex-1" variant="outline">
           <Link className="flex w-full items-center justify-center gap-2" to={detailsPath}>
             {actionLabel}
             <ArrowUpRight

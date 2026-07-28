@@ -75,8 +75,8 @@ export function RegisterPage() {
           </span>
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
             We sent a verification link to{' '}
-            <span className="font-semibold text-foreground">{verificationEmail}</span>. Verify your
-            email, then sign in.
+            <span className="break-all font-semibold text-foreground">{verificationEmail}</span>.
+            Verify your email, then sign in.
           </p>
         </div>
       </AuthCard>

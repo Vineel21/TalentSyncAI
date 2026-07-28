@@ -23,6 +23,7 @@ import type { ApplicationRow, JobRow, ProfileRow, UserRow } from '../src/config/
 import type { DatabaseClient } from '../src/config/supabase.js';
 import type { AiRepository, ApplicationBundle, MatchBundle } from '../src/modules/ai/repository.js';
 import { AiService } from '../src/modules/ai/service.js';
+import { AppError } from '../src/shared/errors.js';
 import type { AuthenticatedContext } from '../src/shared/request-context.js';
 
 const parsedResume = {
@@ -154,6 +155,7 @@ describe('AiService Gemini gateway', () => {
     geminiSdk.create.mockReset();
     env.GEMINI_API_KEY = 'test-gemini-key';
     env.GEMINI_SERVICE_TIER = 'paid';
+    env.AI_PROCESSING_MODE = 'live';
     env.GEMINI_TIMEOUT_MS = 30_000;
   });
 
@@ -471,6 +473,28 @@ describe('AiService Gemini gateway', () => {
       code: 'AI_PAID_TIER_REQUIRED',
       statusCode: 503,
     });
+    expect(geminiSdk.create).not.toHaveBeenCalled();
+  });
+
+  it('fails before loading or mutating application data in assessment mode', async () => {
+    env.AI_PROCESSING_MODE = 'assessment';
+    env.GEMINI_SERVICE_TIER = 'unpaid';
+    env.GEMINI_API_KEY = undefined;
+    const repository = createRepositorySpies();
+    const service = new AiService(repository);
+
+    const error: unknown = await service
+      .calculateMatch(recruiterContext, { applicationId })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AppError);
+    if (!(error instanceof AppError)) throw new Error('Expected an AppError');
+    expect(error.code).toBe('AI_ASSESSMENT_MODE');
+    expect(error.statusCode).toBe(503);
+    expect(error.message).toContain('seeded AI results remain available');
+    expect(repository.getApplicationBundle).not.toHaveBeenCalled();
+    expect(repository.beginAnalysis).not.toHaveBeenCalled();
+    expect(repository.updateAnalysis).not.toHaveBeenCalled();
     expect(geminiSdk.create).not.toHaveBeenCalled();
   });
 

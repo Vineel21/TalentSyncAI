@@ -10,7 +10,7 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/card';
 import { FormField } from '@/components/ui/form-field';
 import { ErrorState, PageLoading } from '@/components/ui/state-view';
 import { Textarea } from '@/components/ui/textarea';
+import { isLiveAiProcessingEnabled } from '@/config/ai-processing';
 import { useToast } from '@/features/shared/toast-provider';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { errorMessage, formatCurrency, formatDate, friendlyLabel } from '@/lib/utils';
@@ -44,6 +45,7 @@ export function JobDetailsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
+  const liveAiProcessingEnabled = isLiveAiProcessingEnabled();
   const job = useQuery({
     queryKey: ['jobs', id],
     queryFn: () => jobService.get(id),
@@ -70,6 +72,20 @@ export function JobDetailsPage() {
     onError: (error) => toast.error('Application not sent', errorMessage(error)),
   });
 
+  useEffect(() => {
+    if (!applyOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setApplyOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [applyOpen]);
+
   if (job.isLoading) return <PageLoading label="Loading job details" />;
   if (job.isError)
     return <ErrorState message={errorMessage(job.error)} onRetry={() => void job.refetch()} />;
@@ -90,12 +106,16 @@ export function JobDetailsPage() {
       <Card className="overflow-hidden">
         <div className="border-b bg-gradient-to-br from-slate-950 to-blue-950 p-6 text-white sm:p-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
-            <div>
+            <div className="min-w-0">
               <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-white/10">
                 <BriefcaseBusiness aria-hidden="true" className="h-6 w-6 text-blue-300" />
               </div>
-              <p className="text-sm font-semibold text-blue-300">{data.companyName}</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{data.title}</h1>
+              <p className="break-words text-sm font-semibold text-blue-300 [overflow-wrap:anywhere]">
+                {data.companyName}
+              </p>
+              <h1 className="mt-2 break-words text-3xl font-bold tracking-tight [overflow-wrap:anywhere] sm:text-4xl">
+                {data.title}
+              </h1>
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin aria-hidden="true" className="h-4 w-4" />
@@ -121,20 +141,30 @@ export function JobDetailsPage() {
               >
                 Apply now
               </Button>
-              <Button
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
-                isLoading={match.isPending}
-                onClick={() => match.mutate()}
-                variant="outline"
-              >
-                <Sparkles aria-hidden="true" className="h-4 w-4" />
-                Check my match
-              </Button>
+              {liveAiProcessingEnabled ? (
+                <Button
+                  className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  isLoading={match.isPending}
+                  onClick={() => match.mutate()}
+                  variant="outline"
+                >
+                  <Sparkles aria-hidden="true" className="h-4 w-4" />
+                  Check my match
+                </Button>
+              ) : (
+                <div
+                  className="max-w-xs rounded-xl border border-amber-300/30 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100"
+                  role="status"
+                >
+                  <span className="font-semibold">Live match checks are paused.</span> Assessment
+                  accounts can review stored match results from their Applications page.
+                </div>
+              )}
             </div>
           </div>
         </div>
-        <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-8">
+        <div className="grid min-w-0 gap-8 p-5 sm:p-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-8">
             <section>
               <h2 className="text-xl font-bold">About the role</h2>
               <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">
@@ -148,7 +178,7 @@ export function JobDetailsPage() {
               </p>
             </section>
           </div>
-          <aside className="space-y-5">
+          <aside className="min-w-0 space-y-5">
             <Card className="p-5">
               <p className="text-sm font-semibold">Role details</p>
               <div className="mt-4 space-y-3 text-sm">
@@ -232,13 +262,16 @@ export function JobDetailsPage() {
         <div
           aria-labelledby="apply-title"
           aria-modal="true"
-          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid items-start justify-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm sm:place-items-center"
           role="dialog"
         >
-          <Card className="w-full max-w-xl">
+          <Card className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto overscroll-contain">
             <div className="flex items-start justify-between border-b p-5">
-              <div>
-                <h2 className="text-xl font-bold" id="apply-title">
+              <div className="min-w-0">
+                <h2
+                  className="break-words text-xl font-bold [overflow-wrap:anywhere]"
+                  id="apply-title"
+                >
                   Apply to {data.title}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">{data.companyName}</p>
@@ -274,11 +307,16 @@ export function JobDetailsPage() {
                   {...form.register('coverLetter')}
                 />
               </FormField>
-              <div className="flex justify-end gap-3">
-                <Button onClick={() => setApplyOpen(false)} type="button" variant="outline">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setApplyOpen(false)}
+                  type="button"
+                  variant="outline"
+                >
                   Cancel
                 </Button>
-                <Button isLoading={apply.isPending} type="submit">
+                <Button className="w-full sm:w-auto" isLoading={apply.isPending} type="submit">
                   Submit application
                 </Button>
               </div>

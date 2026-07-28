@@ -44,9 +44,11 @@ function RecommendationCard({
         </div>
       </div>
       <div className="mt-4">
-        <h2 className="text-lg font-bold">{job.title}</h2>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">{job.companyName}</p>
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <h2 className="break-words text-lg font-bold [overflow-wrap:anywhere]">{job.title}</h2>
+        <p className="mt-1 break-words text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+          {job.companyName}
+        </p>
+        <p className="mt-3 flex min-w-0 items-center gap-1.5 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
           <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
           {job.location}
         </p>

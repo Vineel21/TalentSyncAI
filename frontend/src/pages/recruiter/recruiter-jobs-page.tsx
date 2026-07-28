@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -40,11 +41,13 @@ function RecruiterJobCard({
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
-    <Card className="p-5">
+    <Card className="border bg-card p-4 transition-all hover:shadow-md dark:border-slate-800 sm:p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold">{job.title}</h2>
+            <h2 className="break-words text-xl font-bold tracking-tight text-foreground [overflow-wrap:anywhere]">
+              {job.title}
+            </h2>
             <Badge
               variant={
                 job.status === 'open' ? 'success' : job.status === 'draft' ? 'warning' : 'secondary'
@@ -53,40 +56,48 @@ function RecruiterJobCard({
               {friendlyLabel(job.status)}
             </Badge>
           </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">{job.companyName}</p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+          <p className="mt-1 break-words text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+            {job.companyName}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex min-w-0 items-center gap-1.5 break-words [overflow-wrap:anywhere]">
+              <MapPin aria-hidden="true" className="h-3.5 w-3.5 text-blue-500" />
               {job.location}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" />
+              <CalendarDays aria-hidden="true" className="h-3.5 w-3.5 text-indigo-500" />
               Created {formatDate(job.createdAt)}
             </span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link className="flex items-center gap-2" to={`/recruiter/jobs/${job.id}/applicants`}>
-              <Eye aria-hidden="true" className="h-4 w-4" />
+            <Link
+              className="flex items-center gap-2 font-medium"
+              to={`/recruiter/jobs/${job.id}/applicants`}
+            >
+              <Eye aria-hidden="true" className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               Applicants
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline">
-            <Link className="flex items-center gap-2" to={`/recruiter/jobs/${job.id}/edit`}>
+            <Link
+              className="flex items-center gap-2 font-medium"
+              to={`/recruiter/jobs/${job.id}/edit`}
+            >
               <Edit3 aria-hidden="true" className="h-4 w-4" />
               Edit
             </Link>
           </Button>
         </div>
       </div>
-      <div className="mt-5 flex flex-col justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
+      <div className="mt-5 flex flex-col justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center dark:border-slate-800">
         <p className="text-xs text-muted-foreground">
           {job.status === 'open'
-            ? 'Visible to candidates'
+            ? 'Visible to candidates on public board'
             : job.status === 'draft'
-              ? 'Only visible to your team'
-              : 'No longer accepting applications'}
+              ? 'Draft mode — only visible in recruiter workspace'
+              : 'Closed — no longer accepting applications'}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
           {job.status !== 'open' ? (
@@ -95,8 +106,9 @@ function RecruiterJobCard({
               onClick={() => onStatus('open')}
               size="sm"
               variant="outline"
+              className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
             >
-              Publish
+              Publish Role
             </Button>
           ) : (
             <Button
@@ -105,7 +117,7 @@ function RecruiterJobCard({
               size="sm"
               variant="outline"
             >
-              Close role
+              Close Role
             </Button>
           )}
           {confirmDelete ? (
@@ -114,7 +126,7 @@ function RecruiterJobCard({
                 Cancel
               </Button>
               <Button isLoading={deleting} onClick={onDelete} size="sm" variant="destructive">
-                Confirm delete
+                Confirm Delete
               </Button>
             </>
           ) : (
@@ -137,6 +149,7 @@ export function RecruiterJobsPage() {
   const queryClient = useQueryClient();
   const status = (searchParams.get('status') ?? '') as JobStatus | '';
   const page = positiveInteger(searchParams.get('page'));
+
   const jobs = useQuery({
     queryKey: ['jobs', 'recruiter', Object.fromEntries(searchParams)],
     queryFn: () =>
@@ -147,6 +160,7 @@ export function RecruiterJobsPage() {
         limit: 10,
       }),
   });
+
   const remove = useMutation({
     mutationFn: jobService.remove,
     onSuccess: () => {
@@ -156,6 +170,7 @@ export function RecruiterJobsPage() {
     },
     onError: (error) => toast.error('Couldn’t delete job', errorMessage(error)),
   });
+
   const updateStatus = useMutation({
     mutationFn: ({ id, nextStatus }: { id: string; nextStatus: JobStatus }) =>
       jobService.updateStatus(id, nextStatus),
@@ -169,22 +184,30 @@ export function RecruiterJobsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
-        description="Create, publish, and review the roles owned by your hiring team."
-        eyebrow="Job management"
-        title="Your jobs"
-        action={
-          <Button asChild>
-            <Link className="flex items-center gap-2" to="/recruiter/jobs/new">
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              Create job
-            </Link>
-          </Button>
-        }
-      />
-      <Card className="flex flex-col gap-3 p-4 md:flex-row">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <PageHeader
+          description="Create, publish, and review the roles owned by your hiring team."
+          eyebrow="Job management"
+          title="Your Workspace Jobs"
+          action={
+            <Button asChild className="bg-blue-600 hover:bg-blue-500 shadow-md font-semibold">
+              <Link className="flex items-center gap-2" to="/recruiter/jobs/new">
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                Create Job
+              </Link>
+            </Button>
+          }
+        />
+      </motion.div>
+
+      {/* Filter and Search Bar */}
+      <Card className="flex flex-col gap-3 p-4 md:flex-row border bg-card dark:border-slate-800 shadow-sm">
         <form
-          className="flex flex-1 gap-2"
+          className="flex min-w-0 flex-1 gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             const next = new URLSearchParams(searchParams);
@@ -198,7 +221,7 @@ export function RecruiterJobsPage() {
             aria-label="Search your jobs"
             className="flex-1"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by title or company"
+            placeholder="Search by role title or location..."
             value={search}
           />
           <Button type="submit">
@@ -218,7 +241,7 @@ export function RecruiterJobsPage() {
           }}
           value={status}
         >
-          <option value="">All statuses</option>
+          <option value="">All Statuses</option>
           <option value="open">Open</option>
           <option value="draft">Draft</option>
           <option value="closed">Closed</option>

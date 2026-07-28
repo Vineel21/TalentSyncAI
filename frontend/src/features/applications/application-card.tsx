@@ -17,22 +17,24 @@ export function ApplicationCard({ application }: { application: Application }) {
   return (
     <Card className="p-5">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold">{application.job?.title ?? 'Job application'}</h2>
+            <h2 className="break-words text-lg font-bold [overflow-wrap:anywhere]">
+              {application.job?.title ?? 'Job application'}
+            </h2>
             <Badge variant={statusVariant(application.status)}>
               {friendlyLabel(application.status)}
             </Badge>
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
             {application.job?.companyName ? (
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex min-w-0 items-center gap-1.5 break-words [overflow-wrap:anywhere]">
                 <Building2 aria-hidden="true" className="h-4 w-4" />
                 {application.job.companyName}
               </span>
             ) : null}
             {application.job?.location ? (
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex min-w-0 items-center gap-1.5 break-words [overflow-wrap:anywhere]">
                 <MapPin aria-hidden="true" className="h-4 w-4" />
                 {application.job.location}
               </span>

@@ -5,6 +5,7 @@ import type {
   UserRow,
 } from '../src/config/database.types.js';
 import type { DatabaseClient } from '../src/config/supabase.js';
+import { env } from '../src/config/env.js';
 import type { AiService } from '../src/modules/ai/service.js';
 import type { ResumesRepository } from '../src/modules/resumes/repository.js';
 import { ResumesService } from '../src/modules/resumes/service.js';
@@ -43,6 +44,11 @@ const uploadedFile = {
 } as Express.Multer.File;
 
 describe('ResumesService', () => {
+  afterEach(() => {
+    env.AI_PROCESSING_MODE = 'live';
+    env.GEMINI_SERVICE_TIER = 'paid';
+  });
+
   it('downloads the immutable application resume snapshot for recruiters', async () => {
     const application: ApplicationRow = {
       id: '33333333-3333-4333-8333-333333333333',
@@ -146,5 +152,26 @@ describe('ResumesService', () => {
     );
     expect(repository.downloadObject).toHaveBeenCalledWith(resumePath);
     expect(aiService.parseResume).not.toHaveBeenCalled();
+  });
+
+  it('rejects new uploads before storing candidate data in assessment mode', async () => {
+    env.AI_PROCESSING_MODE = 'assessment';
+    env.GEMINI_SERVICE_TIER = 'unpaid';
+    const repository = {
+      findProfile: vi.fn(),
+      uploadObject: vi.fn(),
+      createAnalysis: vi.fn(),
+      updateProfile: vi.fn(),
+    } as unknown as ResumesRepository;
+    const service = new ResumesService(repository, {} as AiService);
+
+    await expect(service.upload(candidateContext, uploadedFile)).rejects.toMatchObject({
+      code: 'AI_ASSESSMENT_MODE',
+      statusCode: 503,
+    });
+    expect(repository.findProfile).not.toHaveBeenCalled();
+    expect(repository.uploadObject).not.toHaveBeenCalled();
+    expect(repository.createAnalysis).not.toHaveBeenCalled();
+    expect(repository.updateProfile).not.toHaveBeenCalled();
   });
 });

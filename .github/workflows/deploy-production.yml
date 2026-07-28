@@ -1,0 +1,97 @@
+name: Deploy production
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    name: Deploy frontend to Vercel
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Check out verified revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate deployment credentials
+        shell: bash
+        run: |
+          : "${VERCEL_ORG_ID:?Missing VERCEL_ORG_ID GitHub secret}"
+          : "${VERCEL_PROJECT_ID:?Missing VERCEL_PROJECT_ID GitHub secret}"
+          : "${VERCEL_TOKEN:?Missing VERCEL_TOKEN GitHub secret}"
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@58.0.0
+
+      - name: Pull production environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build production artifacts
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy verified artifacts
+        id: deploy
+        shell: bash
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-check production application
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$DEPLOYMENT_URL" > /dev/null
+
+          for attempt in {1..12}; do
+            if health_response="$(
+              curl --fail --silent --show-error --location --max-time 30 \
+                "$DEPLOYMENT_URL/api/v1/health"
+            )" && HEALTH_RESPONSE="$health_response" node -e "
+              const response = JSON.parse(process.env.HEALTH_RESPONSE);
+              if (response.success !== true || response.data?.status !== 'ok') {
+                process.exit(1);
+              }
+            "; then
+              exit 0
+            fi
+
+            echo "API is not ready yet (attempt $attempt of 12)"
+            if [ "$attempt" -lt 12 ]; then
+              sleep 10
+            fi
+          done
+
+          exit 1

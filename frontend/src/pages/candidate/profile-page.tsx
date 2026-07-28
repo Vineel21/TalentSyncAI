@@ -16,7 +16,7 @@ import { ErrorState, PageLoading } from '@/components/ui/state-view';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/features/shared/toast-provider';
 import { useDocumentTitle } from '@/hooks/use-document-title';
-import { errorMessage } from '@/lib/utils';
+import { cn, errorMessage } from '@/lib/utils';
 import { profileService } from '@/services/profile.service';
 import { resumeService } from '@/services/resume.service';
 
@@ -271,7 +271,7 @@ export function CandidateProfileEditor({
             eyebrow="Candidate profile"
             title="Your professional story"
             action={
-              <Button isLoading={update.isPending} type="submit">
+              <Button className="w-full sm:w-auto" isLoading={update.isPending} type="submit">
                 <Save aria-hidden="true" className="h-4 w-4" />
                 Save profile
               </Button>
@@ -286,7 +286,7 @@ export function CandidateProfileEditor({
                 </div>
                 <Progress className="mt-2" value={profile.data.profileCompletion} />
               </div>
-              <Button asChild variant="outline">
+              <Button asChild className="w-full sm:w-auto" variant="outline">
                 <Link className="flex items-center gap-2" to="/profile/upload-resume">
                   <FileText aria-hidden="true" className="h-4 w-4" />
                   {profile.data.resumePath ? 'Replace resume' : 'Upload resume'}
@@ -317,9 +317,9 @@ export function CandidateProfileEditor({
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.72fr]">
-        <div className="space-y-6">
-          <Card>
+      <div className="grid min-w-0 gap-6 min-[1440px]:grid-cols-12">
+        <div className="contents">
+          <Card className="min-w-0 min-[1440px]:col-span-12">
             <CardHeader>
               <CardTitle>Personal details</CardTitle>
             </CardHeader>
@@ -394,7 +394,7 @@ export function CandidateProfileEditor({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="min-w-0 min-[1440px]:col-span-12">
             <CardHeader>
               <CardTitle>Summary and skills</CardTitle>
             </CardHeader>
@@ -423,13 +423,14 @@ export function CandidateProfileEditor({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
+          <Card className="min-w-0 min-[1440px]:col-span-12">
+            <CardHeader className="items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Experience</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">Most recent experience first.</p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => experience.append(emptyExperience)}
                 size="sm"
                 type="button"
@@ -446,7 +447,7 @@ export function CandidateProfileEditor({
                 </p>
               ) : (
                 experience.fields.map((field, index) => (
-                  <div className="rounded-xl border p-4" key={field.id}>
+                  <div className="rounded-xl border p-4 sm:p-5" key={field.id}>
                     <div className="mb-4 flex justify-between">
                       <Badge variant="secondary">Experience {index + 1}</Badge>
                       <Button
@@ -459,7 +460,7 @@ export function CandidateProfileEditor({
                         <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                       <FormField
                         id={`experience-${index}-title`}
                         label="Job title"
@@ -501,7 +502,7 @@ export function CandidateProfileEditor({
                           {...form.register(`experience.${index}.endDate`)}
                         />
                       </FormField>
-                      <label className="flex items-center gap-2 text-sm font-medium">
+                      <label className="flex min-h-10 items-center gap-2 self-end text-sm font-medium">
                         <input
                           className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                           type="checkbox"
@@ -509,7 +510,7 @@ export function CandidateProfileEditor({
                         />
                         I currently work here
                       </label>
-                      <div className="sm:col-span-2">
+                      <div className="sm:col-span-2 xl:col-span-3">
                         <FormField id={`experience-${index}-description`} label="Highlights">
                           <Textarea
                             id={`experience-${index}-description`}
@@ -526,11 +527,17 @@ export function CandidateProfileEditor({
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Education</CardTitle>
+        <div className="contents">
+          <Card className="min-w-0 min-[1440px]:col-span-12">
+            <CardHeader className="items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Education</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add your most relevant education first.
+                </p>
+              </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => education.append(emptyEducation)}
                 size="sm"
                 type="button"
@@ -547,8 +554,12 @@ export function CandidateProfileEditor({
                 </p>
               ) : (
                 education.fields.map((field, index) => (
-                  <div className="space-y-4 rounded-xl border p-4" key={field.id}>
-                    <div className="flex justify-end">
+                  <div
+                    className="grid gap-4 rounded-xl border p-4 md:grid-cols-2 sm:p-5 xl:grid-cols-4"
+                    key={field.id}
+                  >
+                    <div className="flex items-center justify-between md:col-span-2 xl:col-span-4">
+                      <Badge variant="secondary">Education {index + 1}</Badge>
                       <Button
                         aria-label={`Remove education ${index + 1}`}
                         onClick={() => education.remove(index)}
@@ -559,67 +570,73 @@ export function CandidateProfileEditor({
                         <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <FormField
-                      id={`education-${index}-institution`}
-                      label="Institution"
-                      error={form.formState.errors.education?.[index]?.institution?.message}
-                    >
-                      <Input
-                        id={`education-${index}-institution`}
-                        {...form.register(`education.${index}.institution`)}
-                      />
-                    </FormField>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="md:col-span-2 xl:col-span-2">
                       <FormField
-                        id={`education-${index}-degree`}
-                        label="Degree"
-                        error={form.formState.errors.education?.[index]?.degree?.message}
+                        id={`education-${index}-institution`}
+                        label="Institution"
+                        error={form.formState.errors.education?.[index]?.institution?.message}
                       >
                         <Input
-                          id={`education-${index}-degree`}
-                          {...form.register(`education.${index}.degree`)}
-                        />
-                      </FormField>
-                      <FormField id={`education-${index}-field`} label="Field of study">
-                        <Input
-                          id={`education-${index}-field`}
-                          {...form.register(`education.${index}.fieldOfStudy`)}
+                          id={`education-${index}-institution`}
+                          {...form.register(`education.${index}.institution`)}
                         />
                       </FormField>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField id={`education-${index}-start`} label="Start">
-                        <Input
-                          id={`education-${index}-start`}
-                          type="date"
-                          {...form.register(`education.${index}.startDate`)}
-                        />
-                      </FormField>
-                      <FormField id={`education-${index}-end`} label="End">
-                        <Input
-                          id={`education-${index}-end`}
-                          type="date"
-                          {...form.register(`education.${index}.endDate`)}
-                        />
-                      </FormField>
-                    </div>
-                    <FormField id={`education-${index}-description`} label="Details">
-                      <Textarea
-                        id={`education-${index}-description`}
-                        rows={3}
-                        {...form.register(`education.${index}.description`)}
+                    <FormField
+                      id={`education-${index}-degree`}
+                      label="Degree"
+                      error={form.formState.errors.education?.[index]?.degree?.message}
+                    >
+                      <Input
+                        id={`education-${index}-degree`}
+                        {...form.register(`education.${index}.degree`)}
                       />
                     </FormField>
+                    <FormField id={`education-${index}-field`} label="Field of study">
+                      <Input
+                        id={`education-${index}-field`}
+                        {...form.register(`education.${index}.fieldOfStudy`)}
+                      />
+                    </FormField>
+                    <FormField id={`education-${index}-start`} label="Start">
+                      <Input
+                        id={`education-${index}-start`}
+                        type="date"
+                        {...form.register(`education.${index}.startDate`)}
+                      />
+                    </FormField>
+                    <FormField id={`education-${index}-end`} label="End">
+                      <Input
+                        id={`education-${index}-end`}
+                        type="date"
+                        {...form.register(`education.${index}.endDate`)}
+                      />
+                    </FormField>
+                    <div className="md:col-span-2 xl:col-span-2">
+                      <FormField id={`education-${index}-description`} label="Details">
+                        <Textarea
+                          id={`education-${index}-description`}
+                          rows={3}
+                          {...form.register(`education.${index}.description`)}
+                        />
+                      </FormField>
+                    </div>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Certifications</CardTitle>
+          <Card className="min-w-0 min-[1440px]:col-span-12">
+            <CardHeader className="items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Certifications</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Include credentials that strengthen your profile.
+                </p>
+              </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => certifications.append(emptyCertification)}
                 size="sm"
                 type="button"
@@ -636,8 +653,12 @@ export function CandidateProfileEditor({
                 </p>
               ) : (
                 certifications.fields.map((field, index) => (
-                  <div className="space-y-4 rounded-xl border p-4" key={field.id}>
-                    <div className="flex justify-end">
+                  <div
+                    className="grid gap-4 rounded-xl border p-4 md:grid-cols-2 sm:p-5 xl:grid-cols-4"
+                    key={field.id}
+                  >
+                    <div className="flex items-center justify-between md:col-span-2 xl:col-span-4">
+                      <Badge variant="secondary">Certification {index + 1}</Badge>
                       <Button
                         aria-label={`Remove certification ${index + 1}`}
                         onClick={() => certifications.remove(index)}
@@ -648,37 +669,45 @@ export function CandidateProfileEditor({
                         <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <FormField id={`cert-${index}-name`} label="Certification">
-                      <Input
+                    <div className="md:col-span-2 xl:col-span-2">
+                      <FormField
                         id={`cert-${index}-name`}
-                        {...form.register(`certifications.${index}.name`)}
-                      />
-                    </FormField>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField id={`cert-${index}-issuer`} label="Issuer">
+                        label="Certification"
+                        error={form.formState.errors.certifications?.[index]?.name?.message}
+                      >
                         <Input
-                          id={`cert-${index}-issuer`}
-                          {...form.register(`certifications.${index}.issuer`)}
-                        />
-                      </FormField>
-                      <FormField id={`cert-${index}-date`} label="Issued date">
-                        <Input
-                          id={`cert-${index}-date`}
-                          type="date"
-                          {...form.register(`certifications.${index}.issuedAt`)}
+                          id={`cert-${index}-name`}
+                          {...form.register(`certifications.${index}.name`)}
                         />
                       </FormField>
                     </div>
-                    <FormField
-                      id={`cert-${index}-url`}
-                      label="Credential URL"
-                      error={form.formState.errors.certifications?.[index]?.credentialUrl?.message}
-                    >
+                    <FormField id={`cert-${index}-issuer`} label="Issuer">
                       <Input
-                        id={`cert-${index}-url`}
-                        {...form.register(`certifications.${index}.credentialUrl`)}
+                        id={`cert-${index}-issuer`}
+                        {...form.register(`certifications.${index}.issuer`)}
                       />
                     </FormField>
+                    <FormField id={`cert-${index}-date`} label="Issued date">
+                      <Input
+                        id={`cert-${index}-date`}
+                        type="date"
+                        {...form.register(`certifications.${index}.issuedAt`)}
+                      />
+                    </FormField>
+                    <div className="md:col-span-2 xl:col-span-4">
+                      <FormField
+                        id={`cert-${index}-url`}
+                        label="Credential URL"
+                        error={
+                          form.formState.errors.certifications?.[index]?.credentialUrl?.message
+                        }
+                      >
+                        <Input
+                          id={`cert-${index}-url`}
+                          {...form.register(`certifications.${index}.credentialUrl`)}
+                        />
+                      </FormField>
+                    </div>
                   </div>
                 ))
               )}
@@ -686,7 +715,7 @@ export function CandidateProfileEditor({
           </Card>
 
           {profile.data.resumePath ? (
-            <Card className="p-5">
+            <Card className="min-w-0 p-5 min-[1440px]:col-span-12">
               <h2 className="font-bold">Resume on file</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 Your resume is securely attached to this profile.
@@ -716,15 +745,20 @@ export function CandidateProfileEditor({
           ) : null}
         </div>
       </div>
-      <div className="sticky bottom-0 z-20 -mx-4 flex items-center justify-between gap-3 border bg-card/95 p-3 shadow-lg backdrop-blur sm:mx-0 sm:rounded-xl lg:bottom-4">
+      <div
+        className={cn(
+          'z-20 flex gap-3 border bg-card/95 p-3 shadow-lg backdrop-blur',
+          onboarding
+            ? 'sticky bottom-4 -mx-4 flex-col-reverse items-stretch sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:rounded-xl'
+            : 'items-center justify-end rounded-xl',
+        )}
+      >
         {onboarding ? (
           <Button disabled={update.isPending} onClick={onBack} type="button" variant="ghost">
             Back
           </Button>
-        ) : (
-          <span />
-        )}
-        <Button isLoading={update.isPending} type="submit">
+        ) : null}
+        <Button className="w-full sm:w-auto" isLoading={update.isPending} type="submit">
           <Save aria-hidden="true" className="h-4 w-4" />
           {onboarding ? 'Save and see matches' : 'Save all changes'}
         </Button>

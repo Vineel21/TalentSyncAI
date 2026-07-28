@@ -23,6 +23,27 @@ const MAX_ATTEMPTS = 3;
 const emailValueSchema = z.email();
 const httpsUrlValueSchema = z.url({ protocol: /^https$/ });
 
+export const assertAiProcessingEnabled = (): void => {
+  if (env.AI_PROCESSING_MODE === 'assessment') {
+    throw new ServiceUnavailableError(
+      'Live AI processing is disabled in this assessment deployment. Use manual profile entry; seeded AI results remain available.',
+      'AI_ASSESSMENT_MODE',
+    );
+  }
+  if (env.GEMINI_SERVICE_TIER !== 'paid') {
+    throw new ServiceUnavailableError(
+      'AI candidate-data processing requires a paid Gemini service tier',
+      'AI_PAID_TIER_REQUIRED',
+    );
+  }
+  if (!env.GEMINI_API_KEY) {
+    throw new ServiceUnavailableError(
+      'AI features are not configured on this server',
+      'AI_NOT_CONFIGURED',
+    );
+  }
+};
+
 const delay = async (milliseconds: number): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 };
@@ -213,18 +234,8 @@ class GeminiGateway {
     untrustedInput: string,
     normalize?: (value: unknown) => unknown,
   ): Promise<T> {
-    if (env.GEMINI_SERVICE_TIER !== 'paid') {
-      throw new ServiceUnavailableError(
-        'AI candidate-data processing requires a paid Gemini service tier',
-        'AI_PAID_TIER_REQUIRED',
-      );
-    }
-    if (!this.client) {
-      throw new ServiceUnavailableError(
-        'AI features are not configured on this server',
-        'AI_NOT_CONFIGURED',
-      );
-    }
+    assertAiProcessingEnabled();
+    if (!this.client) throw new ServiceUnavailableError('AI features are not configured');
 
     const deadline = Date.now() + env.GEMINI_TIMEOUT_MS;
     let lastError: unknown;
@@ -371,6 +382,7 @@ export class AiService {
   }
 
   public async parseResume(resumeText: string, _userId: string): Promise<ResumeParseResult> {
+    assertAiProcessingEnabled();
     return this.gateway.parseResume(resumeText);
   }
 
@@ -378,6 +390,7 @@ export class AiService {
     context: AuthenticatedContext,
     input: MatchAnalysisInput,
   ): Promise<MatchResult> {
+    assertAiProcessingEnabled();
     if ('jobId' in input) {
       if (context.user.role !== 'candidate') {
         throw new AppError(
@@ -426,6 +439,7 @@ export class AiService {
     context: AuthenticatedContext,
     applicationId: string,
   ): Promise<CandidateSummaryResult> {
+    assertAiProcessingEnabled();
     assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);
@@ -449,6 +463,7 @@ export class AiService {
     context: AuthenticatedContext,
     applicationId: string,
   ): Promise<ResumeFeedbackResult> {
+    assertAiProcessingEnabled();
     assertRecruiterApplicationAnalysis(context);
     const bundle = await this.repository.getApplicationBundle(context.client, applicationId);
     await this.repository.beginAnalysis(applicationId, this.gateway.model);

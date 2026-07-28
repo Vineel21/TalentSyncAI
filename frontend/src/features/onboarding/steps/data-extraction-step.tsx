@@ -12,6 +12,7 @@ import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { assessmentModeMessage, isLiveAiProcessingEnabled } from '@/config/ai-processing';
 import { errorMessage } from '@/lib/utils';
 import { resumeService } from '@/services/resume.service';
 import type { OnboardingSource } from '@/types/api';
@@ -29,6 +30,7 @@ export function DataExtractionStep({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const liveAiProcessingEnabled = isLiveAiProcessingEnabled();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const processResume = useMutation({
@@ -46,6 +48,7 @@ export function DataExtractionStep({
   });
 
   function validateFile(selected?: File) {
+    if (!liveAiProcessingEnabled) return;
     if (!selected) return;
     if (selected.type !== 'application/pdf') {
       setFile(null);
@@ -77,19 +80,21 @@ export function DataExtractionStep({
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="flex flex-col overflow-hidden border-primary/30">
-          <div className="flex items-start justify-between gap-4 border-b bg-blue-50/60 p-5 dark:bg-blue-950/20">
-            <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b bg-blue-50/60 p-5 dark:bg-blue-950/20">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
                 <Sparkles aria-hidden="true" className="h-5 w-5" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <h2 className="font-bold">Upload a resume</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Fastest way to build your profile
                 </p>
               </div>
             </div>
-            <Badge variant="success">Recommended</Badge>
+            <Badge variant={liveAiProcessingEnabled ? 'success' : 'warning'}>
+              {liveAiProcessingEnabled ? 'Recommended' : 'Assessment demo'}
+            </Badge>
           </div>
           <div className="flex flex-1 flex-col p-5">
             <div
@@ -107,13 +112,14 @@ export function DataExtractionStep({
                 accept="application/pdf,.pdf"
                 aria-label="Resume PDF"
                 className="sr-only"
+                disabled={!liveAiProcessingEnabled}
                 onChange={(event) => validateFile(event.target.files?.[0])}
                 ref={inputRef}
                 type="file"
               />
               <Button
                 className="mt-4"
-                disabled={processResume.isPending || isAdvancing}
+                disabled={!liveAiProcessingEnabled || processResume.isPending || isAdvancing}
                 onClick={() => inputRef.current?.click()}
                 size="sm"
                 type="button"
@@ -122,6 +128,16 @@ export function DataExtractionStep({
                 Choose PDF
               </Button>
             </div>
+
+            {!liveAiProcessingEnabled ? (
+              <div
+                className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+                role="status"
+              >
+                <p className="font-bold">Resume parsing paused for this public demo</p>
+                <p className="mt-1">{assessmentModeMessage}</p>
+              </div>
+            ) : null}
 
             {fileError ? (
               <p className="mt-3 text-sm font-medium text-destructive" role="alert">
@@ -180,10 +196,12 @@ export function DataExtractionStep({
               </div>
             ) : null}
 
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">
-              Resume text is processed securely by Google Gemini from our backend to extract your
-              profile. There is no automatic application or hiring decision.
-            </p>
+            {liveAiProcessingEnabled ? (
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                Resume text is processed securely by Google Gemini from our backend to extract your
+                profile. There is no automatic application or hiring decision.
+              </p>
+            ) : null}
             <div className="mt-auto pt-5">
               {currentSource === 'resume' && !file ? (
                 <Button

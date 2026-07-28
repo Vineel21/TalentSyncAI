@@ -13,9 +13,9 @@ export function PublicLayout() {
   const dashboardPath = user?.role === 'recruiter' ? '/recruiter' : '/dashboard';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh min-w-0 overflow-x-clip bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex h-16 min-w-0 items-center justify-between gap-3">
           <Logo />
           <nav aria-label="Main navigation" className="hidden items-center gap-8 md:flex">
             <a
@@ -95,14 +95,20 @@ export function PublicLayout() {
                 {label}
               </a>
             ))}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button asChild variant="outline">
-                <Link to="/login">Sign in</Link>
+            {user ? (
+              <Button asChild className="mt-2 w-full">
+                <Link to={dashboardPath}>Open dashboard</Link>
               </Button>
-              <Button asChild>
-                <Link to="/register">Get started</Link>
-              </Button>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button asChild variant="outline">
+                  <Link to="/login">Sign in</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/register">Get started</Link>
+                </Button>
+              </div>
+            )}
           </nav>
         ) : null}
       </header>

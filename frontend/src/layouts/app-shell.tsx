@@ -80,9 +80,9 @@ export function AppShell({ role }: { role: UserRole }) {
   const roleLabel = role === 'candidate' ? 'Candidate workspace' : 'Recruiter workspace';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-card lg:flex lg:flex-col">
-        <div className="flex h-16 items-center border-b px-6">
+    <div className="min-h-dvh min-w-0 overflow-x-clip bg-slate-50 text-foreground transition-colors duration-300 dark:bg-background">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-card/95 backdrop-blur-xl lg:flex lg:flex-col dark:bg-slate-900/95 dark:border-slate-800">
+        <div className="flex h-16 items-center border-b px-6 dark:border-slate-800">
           <Logo />
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -91,9 +91,9 @@ export function AppShell({ role }: { role: UserRole }) {
           </p>
           <Navigation items={navigation} />
         </div>
-        <div className="border-t p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-muted p-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        <div className="border-t p-4 dark:border-slate-800">
+          <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-3 border dark:bg-slate-800/60 dark:border-slate-700/60">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">
               {initials(user?.fullName ?? user?.email)}
             </div>
             <div className="min-w-0">
@@ -113,7 +113,7 @@ export function AppShell({ role }: { role: UserRole }) {
             className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative h-full w-72 bg-card p-4 shadow-2xl">
+          <aside className="relative h-dvh w-[min(18rem,calc(100vw-2rem))] overflow-y-auto bg-card p-4 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <Logo />
               <Button
@@ -130,9 +130,9 @@ export function AppShell({ role }: { role: UserRole }) {
         </div>
       ) : null}
 
-      <div className="lg:pl-64">
+      <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur-xl sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Button
               aria-label="Open navigation"
               className="lg:hidden"
@@ -142,14 +142,14 @@ export function AppShell({ role }: { role: UserRole }) {
             >
               <Menu aria-hidden="true" className="h-5 w-5" />
             </Button>
-            <div>
+            <div className="min-w-0">
               <p className="hidden text-xs text-muted-foreground sm:block">{roleLabel}</p>
-              <p className="text-sm font-semibold">
+              <p className="truncate text-sm font-semibold">
                 Welcome back{user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
             <Button
               aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} mode`}
               onClick={toggleTheme}
@@ -206,7 +206,7 @@ export function AppShell({ role }: { role: UserRole }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-[1440px] p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1440px] p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
           <Outlet />
         </main>
       </div>
@@ -228,7 +228,7 @@ export function AppShell({ role }: { role: UserRole }) {
             to={item.href}
           >
             <item.icon aria-hidden="true" className="h-5 w-5" />
-            <span>{item.label}</span>
+            <span className="w-full truncate text-center">{item.label}</span>
           </NavLink>
         ))}
       </nav>

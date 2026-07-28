@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ErrorState, PageLoading } from '@/components/ui/state-view';
+import { assessmentModeMessage, isLiveAiProcessingEnabled } from '@/config/ai-processing';
 import { useToast } from '@/features/shared/toast-provider';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { errorMessage } from '@/lib/utils';
@@ -18,6 +19,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export function ResumeUploadPage() {
   useDocumentTitle('Resume');
+  const liveAiProcessingEnabled = isLiveAiProcessingEnabled();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ResumeParseResult | null>(null);
@@ -48,6 +50,7 @@ export function ResumeUploadPage() {
   if (!profile.data) return <PageLoading label="Loading resume status" />;
 
   function validateFile(selected?: File) {
+    if (!liveAiProcessingEnabled) return;
     if (!selected) return;
     if (selected.type !== 'application/pdf') {
       setFileError('Choose a PDF file.');
@@ -67,7 +70,11 @@ export function ResumeUploadPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        description="AI extracts structured profile details on the server. You stay in control of every field."
+        description={
+          liveAiProcessingEnabled
+            ? 'AI extracts structured profile details on the server. You stay in control of every field.'
+            : 'Resume parsing is paused in this assessment deployment. Your profile remains editable manually.'
+        }
         eyebrow="Profile"
         title="Resume upload"
         action={
@@ -76,10 +83,10 @@ export function ResumeUploadPage() {
           </Button>
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <Card className="p-6">
           <div
-            className="flex min-h-72 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-8 text-center transition dark:border-blue-900 dark:bg-blue-950/20"
+            className="flex min-h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-5 text-center transition dark:border-blue-900 dark:bg-blue-950/20 sm:min-h-72 sm:p-8"
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
@@ -99,6 +106,7 @@ export function ResumeUploadPage() {
               aria-describedby="gemini-resume-disclosure"
               aria-label="Resume PDF"
               className="sr-only"
+              disabled={!liveAiProcessingEnabled}
               id="resume"
               onChange={(event) => validateFile(event.target.files?.[0])}
               ref={inputRef}
@@ -106,6 +114,7 @@ export function ResumeUploadPage() {
             />
             <Button
               className="mt-5"
+              disabled={!liveAiProcessingEnabled}
               onClick={() => inputRef.current?.click()}
               type="button"
               variant="outline"
@@ -119,27 +128,35 @@ export function ResumeUploadPage() {
             </p>
           ) : null}
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-            <p className="text-sm font-bold">Google Gemini processing</p>
+            <p className="text-sm font-bold">
+              {liveAiProcessingEnabled ? 'Google Gemini processing' : 'Assessment-safe AI mode'}
+            </p>
             <p
               className="mt-1 text-sm leading-6 text-amber-950 dark:text-amber-100"
               id="gemini-resume-disclosure"
             >
-              Your resume text will be sent from our backend to Google Gemini to extract profile
-              details. That text and the resulting candidate profile data may later be processed for
-              authorized application matching, recruiter summaries, and resume feedback. Real
-              candidate data is processed through a billing-enabled Gemini API project. Under
-              Google&apos;s paid-service terms, prompts and responses are not used to improve Google
-              products. Google may retain prompts and responses for a limited period solely for
-              abuse monitoring and required legal or regulatory disclosures.{' '}
-              <a
-                className="font-semibold underline underline-offset-2"
-                href="https://ai.google.dev/gemini-api/terms"
-                rel="noreferrer"
-                target="_blank"
-              >
-                Review Google&apos;s Gemini API terms
-              </a>
-              .
+              {liveAiProcessingEnabled ? (
+                <>
+                  Your resume text will be sent from our backend to Google Gemini to extract profile
+                  details. That text and the resulting candidate profile data may later be processed
+                  for authorized application matching, recruiter summaries, and resume feedback.
+                  Real candidate data is processed through a billing-enabled Gemini API project.
+                  Under Google&apos;s paid-service terms, prompts and responses are not used to
+                  improve Google products. Google may retain prompts and responses for a limited
+                  period solely for abuse monitoring and required legal or regulatory disclosures.{' '}
+                  <a
+                    className="font-semibold underline underline-offset-2"
+                    href="https://ai.google.dev/gemini-api/terms"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Review Google&apos;s Gemini API terms
+                  </a>
+                  .
+                </>
+              ) : (
+                assessmentModeMessage
+              )}
             </p>
           </div>
           {file ? (

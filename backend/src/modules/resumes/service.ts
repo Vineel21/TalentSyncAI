@@ -3,7 +3,7 @@ import { PDFParse } from 'pdf-parse';
 import type { Database, ProfileRow } from '../../config/database.types.js';
 import { AppError, BadRequestError } from '../../shared/errors.js';
 import type { AuthenticatedContext } from '../../shared/request-context.js';
-import type { AiService } from '../ai/service.js';
+import { assertAiProcessingEnabled, type AiService } from '../ai/service.js';
 import type { ResumeParseResult } from '../ai/types.js';
 import type { ResumesRepository } from './repository.js';
 import type { ResumeDownloadResult, ResumeParseResponse, ResumeUploadResult } from './types.js';
@@ -77,6 +77,7 @@ export class ResumesService {
     context: AuthenticatedContext,
     file: Express.Multer.File,
   ): Promise<ResumeUploadResult> {
+    assertAiProcessingEnabled();
     const safeFilename = sanitizeFilename(file.originalname);
     const objectPath = `${context.user.id}/${randomUUID()}.pdf`;
     await this.repository.findProfile(context.client, context.user.id);
@@ -110,6 +111,7 @@ export class ResumesService {
   }
 
   public async parse(context: AuthenticatedContext): Promise<ResumeParseResponse> {
+    assertAiProcessingEnabled();
     const profile = await this.repository.findProfile(context.client, context.user.id);
     if (!profile.resume_path) {
       throw new BadRequestError('Upload a resume before parsing it', 'RESUME_REQUIRED');

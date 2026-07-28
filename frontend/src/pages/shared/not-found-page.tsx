@@ -10,14 +10,16 @@ export function NotFoundPage() {
   const { user } = useAuth();
   const home = user?.role === 'recruiter' ? '/recruiter' : user ? '/dashboard' : '/';
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
+    <main className="grid min-h-dvh place-items-center bg-slate-950 p-5 text-white sm:p-6">
       <div className="max-w-lg text-center">
         <Logo className="justify-center text-xl" />
         <div className="mx-auto mt-12 grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-blue-300">
           <Compass aria-hidden="true" className="h-8 w-8" />
         </div>
         <p className="mt-8 text-sm font-bold uppercase tracking-[0.3em] text-blue-300">404</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight">This page wandered off.</h1>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+          This page wandered off.
+        </h1>
         <p className="mt-4 leading-7 text-slate-400">
           The link may be outdated, or you may not have access to this workspace.
         </p>

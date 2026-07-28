@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '@/features/shared/toast-provider';
 import { ResumeUploadPage } from '@/pages/candidate/resume-upload-page';
 import { profileService } from '@/services/profile.service';
@@ -62,6 +62,7 @@ function renderPage() {
 
 describe('ResumeUploadPage Gemini processing', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_AI_PROCESSING_MODE', 'live');
     vi.clearAllMocks();
     vi.mocked(profileService.getMine).mockResolvedValue(profile);
     vi.mocked(resumeService.upload).mockResolvedValue({
@@ -73,6 +74,10 @@ describe('ResumeUploadPage Gemini processing', () => {
       },
     });
     vi.mocked(resumeService.parse).mockResolvedValue(parsedResume);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('discloses paid Gemini processing and uploads a valid file without a consent gate', async () => {
@@ -131,5 +136,18 @@ describe('ResumeUploadPage Gemini processing', () => {
 
     await waitFor(() => expect(resumeService.upload).toHaveBeenCalledWith(replacementResume));
     await waitFor(() => expect(resumeService.parse).toHaveBeenCalledOnce());
+  });
+
+  it('does not accept a new resume in assessment mode', async () => {
+    vi.stubEnv('VITE_AI_PROCESSING_MODE', 'assessment');
+    renderPage();
+
+    const input = await screen.findByLabelText('Resume PDF');
+    expect(input).toBeDisabled();
+    expect(screen.getByRole('button', { name: /choose pdf/i })).toBeDisabled();
+    expect(screen.getByText(/assessment-safe ai mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/no newly uploaded resume or profile data/i)).toBeInTheDocument();
+    expect(resumeService.upload).not.toHaveBeenCalled();
+    expect(resumeService.parse).not.toHaveBeenCalled();
   });
 });

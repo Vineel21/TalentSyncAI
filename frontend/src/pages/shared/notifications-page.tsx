@@ -93,7 +93,7 @@ export function NotificationsPage() {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-start">
-                    <h2 className="font-semibold">{notification.title}</h2>
+                    <h2 className="break-words font-semibold">{notification.title}</h2>
                     <time className="shrink-0 text-xs text-muted-foreground">
                       {formatDate(notification.createdAt, {
                         day: 'numeric',
@@ -103,7 +103,7 @@ export function NotificationsPage() {
                       })}
                     </time>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-2 break-words text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
                     {notification.message}
                   </p>
                 </div>
