@@ -13,6 +13,17 @@ TalentSync turns a resume or manually entered profile into a reusable candidate 
 
 > **Assessment deployment:** this repository defaults to a privacy-safe assessment mode. The free Gemini project is not used for live resume or candidate-data processing. Manual onboarding and all non-AI product flows remain available, while the seeded accounts expose synthetic resume and AI fixtures for evaluation.
 
+## Live assessment deployment
+
+| Surface | URL | Verified |
+| --- | --- | --- |
+| Web application | [talentsync-ai-chi.vercel.app](https://talentsync-ai-chi.vercel.app) | Frontend, API proxy, candidate login/dashboard, and recruiter login/dashboard |
+| Backend API | [talentsync-api-wqk7.onrender.com](https://talentsync-api-wqk7.onrender.com/api/v1/health) | Production health response |
+| Continuous integration | [CI workflow](https://github.com/Vineel21/TalentSyncAI/actions/workflows/ci.yml) | Formatting, lint, types, tests, builds, and migration rebuild |
+| Continuous delivery | [Production workflow](https://github.com/Vineel21/TalentSyncAI/actions/workflows/deploy-production.yml) | Vercel build, deployment, and public-origin smoke test |
+
+The production paths were verified on July 28, 2026 with the synthetic candidate and recruiter accounts documented below. The free Render service can sleep while idle, so its first request may take longer than subsequent requests.
+
 ## Product capabilities
 
 ### Candidate workspace
@@ -411,6 +422,8 @@ Production delivery runs only after the required CI workflow succeeds:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Vineel21/TalentSyncAI)
 
+Verified service: [talentsync-api-wqk7.onrender.com](https://talentsync-api-wqk7.onrender.com/api/v1/health)
+
 The Blueprint uses the free Render web-service plan for assessment hosting. Free services can spin down while idle, so the first API request after inactivity may take longer than normal.
 
 Configure these backend values in Render:
@@ -422,9 +435,11 @@ Configure these backend values in Render:
 - `AI_PROCESSING_MODE=assessment`
 - `GEMINI_SERVICE_TIER=unpaid`
 
-No Gemini key is needed in assessment mode. The Vercel domain above is the reserved production origin; it should not be presented as a verified live application until the production pipeline and smoke check succeed.
+No Gemini key is needed in assessment mode. The configured Vercel domain is the verified production origin.
 
 ### Vercel frontend
+
+Verified application: [talentsync-ai-chi.vercel.app](https://talentsync-ai-chi.vercel.app)
 
 Import `Vineel21/TalentSyncAI` into Vercel or allow the production GitHub Actions workflow to create the deployment from the repository root. `vercel.json` owns the workspace install, frontend build, output directory, SPA fallback, and backend proxy.
 
@@ -458,7 +473,7 @@ The public Render origin is declared in `vercel.json` because it is routing meta
 7. Add the verified Vercel URL to Supabase Auth.
 8. Smoke-test both candidate and recruiter accounts, including authorization boundaries.
 
-Live URLs should be added to this README only after both deployments and the production smoke test succeed.
+The live URLs in this README were added only after both deployments and the authenticated production smoke tests succeeded.
 
 ## Security model
 
