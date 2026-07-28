@@ -1,6 +1,7 @@
 name: Deploy production
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows:
       - CI
@@ -20,8 +21,11 @@ jobs:
   deploy-frontend:
     name: Deploy frontend to Vercel
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -36,13 +40,19 @@ jobs:
       - name: Check out verified revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Verify manually dispatched revision
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          npm ci
+          npm run check
 
       - name: Validate deployment credentials
         shell: bash

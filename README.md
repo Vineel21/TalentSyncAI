@@ -403,6 +403,7 @@ Production delivery runs only after the required CI workflow succeeds:
 
 - Render reads `render.yaml`, builds the backend, checks `/api/v1/health`, and deploys after passing GitHub checks.
 - `.github/workflows/deploy-production.yml` checks out the exact successful `main` revision, builds it with Vercel CLI, and deploys the prebuilt artifact.
+- The same workflow also exposes a manual retry trigger for credential rotation or provider recovery.
 - Vercel proxies `/api/*` to the Render service so the browser can use one public origin.
 - The deployment job smoke-checks the frontend and retries the proxied API health endpoint to accommodate a free Render cold start.
 
