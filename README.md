@@ -1,133 +1,51 @@
 # TalentSync AI
 
 [![CI](https://github.com/Vineel21/TalentSyncAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Vineel21/TalentSyncAI/actions/workflows/ci.yml)
+[![Deploy production](https://github.com/Vineel21/TalentSyncAI/actions/workflows/deploy-production.yml/badge.svg)](https://github.com/Vineel21/TalentSyncAI/actions/workflows/deploy-production.yml)
 
-TalentSync AI is a full-stack recruitment platform that connects candidates and recruiters through structured profiles, job discovery, application tracking, hiring analytics, and AI-assisted review.
+TalentSync AI is a full-stack recruitment platform for candidate onboarding, job discovery, application tracking, recruiter workflows, hiring analytics, and AI-assisted resume review.
 
-The MVP focuses on two expensive parts of recruiting:
+## Live demo
 
-- Candidates should not have to re-enter information already present in their resume.
-- Recruiters should not have to manually organize every applicant before identifying relevant evidence.
-
-TalentSync turns a resume or manually entered profile into a reusable candidate record, provides explainable job-match information, and gives recruiters one pipeline for jobs, applicants, AI summaries, status changes, and analytics. AI output is decision support only; people remain responsible for employment decisions.
-
-> **Assessment deployment:** this repository defaults to a privacy-safe assessment mode. The free Gemini project is not used for live resume or candidate-data processing. Manual onboarding and all non-AI product flows remain available, while the seeded accounts expose synthetic resume and AI fixtures for evaluation.
-
-## Live assessment deployment
-
-| Surface | URL | Verified |
-| --- | --- | --- |
-| Web application | [talentsync-ai-chi.vercel.app](https://talentsync-ai-chi.vercel.app) | Frontend, API proxy, candidate login/dashboard, and recruiter login/dashboard |
-| Backend API | [talentsync-api-wqk7.onrender.com](https://talentsync-api-wqk7.onrender.com/api/v1/health) | Production health response |
-| Continuous integration | [CI workflow](https://github.com/Vineel21/TalentSyncAI/actions/workflows/ci.yml) | Formatting, lint, types, tests, builds, and migration rebuild |
-| Continuous delivery | [Production workflow](https://github.com/Vineel21/TalentSyncAI/actions/workflows/deploy-production.yml) | Vercel build, deployment, and public-origin smoke test |
-
-The production paths were verified on July 28, 2026 with the synthetic candidate and recruiter accounts documented below. The free Render service can sleep while idle, so its first request may take longer than subsequent requests.
-
-## Product capabilities
-
-### Candidate workspace
-
-- Supabase email/password registration, login, protected routes, and refresh-session recovery
-- Registration-triggered three-step onboarding with persisted progress
-- Resume-assisted or manual profile creation
-- Editable personal details, summary, skills, experience, education, and certifications
-- Profile-based job recommendations with a non-blocking Skip path
-- Responsive job search, filtering, pagination, details, and saved jobs
-- Job-match evidence, applications, withdrawals, current application status, and notifications
-- Candidate dashboard with profile completion, saved jobs, and recent applications
-
-### Recruiter workspace
-
-- Role-protected recruiter registration and login
-- Job creation, editing, publication, closure, and soft deletion
-- Job-specific and cross-job applicant review
-- Candidate profile and submitted-resume access scoped to recruiter-owned jobs
-- Seeded or live-mode AI match scores, candidate summaries, and structured resume feedback
-- Controlled pipeline transitions from application through offer, rejection, or withdrawal
-- Dashboard metrics, monthly applicant activity, notifications, and responsive analytics
-
-### Responsive experience
-
-Public, authentication, onboarding, candidate, and recruiter screens use responsive navigation and adaptive layouts from narrow mobile screens through wide desktops. Tables, charts, forms, modals, drawers, cards, and action groups are constrained to avoid page-level horizontal overflow.
-
-## Business value
-
-| User | Problem | TalentSync outcome |
-| --- | --- | --- |
-| Candidate | Repeated profile entry and unclear application progress | Reusable profile, guided onboarding, job matching, saved jobs, and status tracking |
-| Recruiter | Fragmented applicant review and slow resume triage | Central job pipeline, structured candidate evidence, AI-assisted summaries, and analytics |
-| Hiring team | Inconsistent screening context | Validated data contracts, persisted application snapshots, controlled statuses, and human-review guidance |
-
-## Architecture
-
-```text
-[Vercel: React 19 + Vite + TypeScript SPA]
-                    |
-                    | HTTPS /api/v1
-                    v
-[Render: Express 5 + TypeScript REST API]
- Routes -> validation -> controllers -> services -> repositories
-                    |
-                    +--> [Supabase: Auth + PostgreSQL/RLS + private Storage]
-                    |
-                    `--> [Google Gemini: backend only; disabled in assessment mode]
-```
-
-The browser never receives the Supabase service-role key or Gemini key and does not query Supabase directly. Express validates and authorizes requests before repositories access Supabase. Repository calls use the caller's JWT wherever ownership policies should apply, leaving PostgreSQL row-level security as the final authorization boundary.
-
-### Feature-based repository structure
-
-```text
-.
-|-- .github/workflows/       # CI and production delivery workflows
-|-- backend/
-|   |-- src/modules/         # Feature modules: controller/service/repository/routes
-|   |-- src/scripts/         # Guarded demo seeding and data reset
-|   |-- tests/               # API, service, repository, and validation tests
-|   `-- Dockerfile           # Alternative API container image
-|-- frontend/
-|   `-- src/
-|       |-- components/ui/   # Reusable shadcn-style primitives
-|       |-- features/        # Auth, jobs, onboarding, applications, shared UI
-|       |-- layouts/         # Public and authenticated shells
-|       |-- pages/           # Public, candidate, recruiter, and shared pages
-|       |-- routes/          # Role and onboarding route guards
-|       `-- services/        # Typed REST clients
-|-- supabase/
-|   |-- migrations/          # Authoritative, versioned database definition
-|   `-- seed.sql             # Optional local job seed
-|-- render.yaml              # Render Blueprint for the API
-`-- vercel.json              # Vercel SPA build and API proxy configuration
-```
-
-## Technology stack
-
-| Layer | Technology |
+| Service | URL |
 | --- | --- |
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS, shadcn-style components |
-| Routing and data | React Router, TanStack Query, Axios |
-| Forms and validation | React Hook Form, Zod |
-| UI | Framer Motion, Recharts, Lucide |
-| Backend | Node.js 22+, Express 5, TypeScript |
-| API hardening | Helmet, CORS, rate limiting, compression, Morgan, Zod |
-| Upload and parsing | Multer, `pdf-parse`, private Supabase Storage |
-| Database and Auth | Supabase PostgreSQL, Row Level Security, Supabase Auth |
-| AI | Google Gemini through `@google/genai`, backend only |
-| Testing | Vitest, Testing Library, Supertest |
-| Delivery | GitHub Actions, Vercel, Render, Supabase migrations |
+| Web application | [talentsync-ai-chi.vercel.app](https://talentsync-ai-chi.vercel.app) |
+| API health | [talentsync-api-wqk7.onrender.com/api/v1/health](https://talentsync-api-wqk7.onrender.com/api/v1/health) |
+| Source | [github.com/Vineel21/TalentSyncAI](https://github.com/Vineel21/TalentSyncAI) |
 
-Dependencies are pinned in `package-lock.json`.
+The API runs on Render's free plan and may respond slowly on the first request after inactivity.
 
-## Demo accounts
+## Features
 
-All accounts below use synthetic `.test` addresses and generated demo data. They are intended only for technical evaluation.
+### Candidate
 
-**Shared test-only password:** `TalentSyncDemo!2026#Login`
+- Email/password authentication with protected routes and session recovery
+- Three-step onboarding with resume-assisted or manual profile creation
+- Editable profile, experience, education, skills, and certifications
+- Job search, filters, saved jobs, recommendations, and match evidence
+- Application submission, status tracking, withdrawal, and notifications
+- Dashboard with profile completion, saved jobs, and recent activity
+
+### Recruiter
+
+- Role-protected recruiter workspace
+- Job creation, editing, publishing, closing, and soft deletion
+- Applicant review with profile and submitted-resume access
+- Pipeline status management from application through offer or rejection
+- AI-assisted summaries, match scores, and resume feedback
+- Dashboard metrics and responsive hiring analytics
+
+The public, authentication, onboarding, candidate, and recruiter interfaces are responsive across mobile, tablet, and desktop layouts.
+
+## Demo access
+
+The seeded accounts and data are synthetic. These are public, test-only credentials; never reuse the password outside this demo.
+
+**Shared password:** `TalentSyncDemo!2026#Login`
 
 ### Recruiters
 
-| Persona | Company | Email |
+| Name | Company | Email |
 | --- | --- | --- |
 | Maya Nair | NovaStack Labs | `maya.recruiter@talentsync.test` |
 | Arjun Rao | FinEdge Analytics | `arjun.recruiter@talentsync.test` |
@@ -135,36 +53,88 @@ All accounts below use synthetic `.test` addresses and generated demo data. They
 
 ### Candidates
 
-| Persona | Profile | Email |
+| Name | Scenario | Email |
 | --- | --- | --- |
-| Aarav Sharma | Frontend fresher / 2026 graduate | `aarav.fresher@talentsync.test` |
+| Aarav Sharma | Frontend fresher | `aarav.fresher@talentsync.test` |
 | Meera Iyer | Senior backend engineer | `meera.backend@talentsync.test` |
 | Rohan Gupta | Data analyst | `rohan.data@talentsync.test` |
 | Sana Khan | Product designer | `sana.design@talentsync.test` |
-| Vikram Singh | Senior DevOps / SRE engineer | `vikram.cloud@talentsync.test` |
+| Vikram Singh | DevOps / SRE engineer | `vikram.cloud@talentsync.test` |
 | Nisha Patel | QA automation career switcher | `nisha.qa@talentsync.test` |
 | Kavya Reddy | Healthcare product analyst | `kavya.health@talentsync.test` |
 
-The fixtures include nine jobs, multiple resume versions, 22 applications, every application status, varied AI-analysis states, notifications, and recruiter analytics. The seeder marks its Auth identities in protected app metadata and refuses to overwrite an unmarked account using a reserved email.
+The demo dataset contains three recruiters, seven candidates, eight resumes, nine jobs, 22 applications across all seven statuses, 22 AI-analysis rows, notifications, and recruiter analytics.
 
-## Local development
+## Architecture
+
+```text
+React + Vite SPA (Vercel)
+          |
+          | HTTPS /api/v1
+          v
+Express + TypeScript API (Render)
+  routes -> validation -> controllers -> services -> repositories
+          |
+          +--> Supabase Auth
+          +--> PostgreSQL + Row Level Security
+          +--> Private Supabase Storage
+          `--> Google Gemini (backend only)
+```
+
+The frontend communicates only with the Express API. Controllers handle HTTP concerns, services own business logic, and repositories access Supabase. Authentication and role checks are enforced by the API, with PostgreSQL RLS providing the final data-access boundary.
+
+### Technology
+
+| Layer | Stack |
+| --- | --- |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, React Router |
+| Data and forms | TanStack Query, Axios, React Hook Form, Zod |
+| UI | shadcn-style components, Radix Slot, Framer Motion, Recharts |
+| Backend | Node.js 22, Express 5, TypeScript, Zod |
+| Data | Supabase Auth, PostgreSQL, RLS, private Storage |
+| AI | Google Gemini through `@google/genai` |
+| Testing | Vitest, Testing Library, Supertest |
+| Delivery | GitHub Actions, Vercel, Render |
+
+### Repository layout
+
+```text
+.
+|-- .github/workflows/       # CI and production deployment
+|-- backend/
+|   |-- src/modules/         # Feature-based API modules
+|   |-- src/scripts/         # Demo seed and guarded data reset
+|   `-- tests/               # Backend tests
+|-- frontend/
+|   `-- src/
+|       |-- components/      # Shared UI
+|       |-- features/        # Feature components and state
+|       |-- layouts/         # Public and authenticated shells
+|       |-- pages/           # Route-level pages
+|       |-- routes/          # Role and onboarding guards
+|       `-- services/        # Typed API clients
+|-- supabase/migrations/     # Versioned database schema
+|-- render.yaml              # Render API configuration
+`-- vercel.json              # Vercel build, SPA, and API proxy rules
+```
+
+## Quick start
 
 ### Requirements
 
 - Node.js 22 or newer
 - npm 10 or newer
-- A Supabase project, or the Supabase CLI and Docker for a local stack
-- A Gemini API key only when deliberately testing live AI with an eligible paid project
+- A hosted Supabase project, or Supabase CLI and Docker for a local stack
 
-### 1. Install dependencies
-
-Run commands from the repository root:
+### 1. Install
 
 ```bash
+git clone https://github.com/Vineel21/TalentSyncAI.git
+cd TalentSyncAI
 npm ci
 ```
 
-### 2. Create local environment files
+### 2. Configure environment files
 
 PowerShell:
 
@@ -180,81 +150,42 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-### 3. Configure the backend
+Set these backend values:
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NODE_ENV` | Yes | `development`, `test`, or `production` |
-| `PORT` | No | API port; defaults to `4000` |
-| `FRONTEND_URL` | Yes | Allowed browser origin; accepts a comma-separated list |
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes | Publishable or legacy anon key used by the API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Backend-only maintenance and privileged operations |
-| `SUPABASE_RESUME_BUCKET` | No | Private bucket; defaults to `resume-files` |
-| `AI_PROCESSING_MODE` | No | `assessment` by default; use `live` only with paid Gemini eligibility |
-| `GEMINI_API_KEY` | Live AI only | Backend-only Gemini key |
-| `GEMINI_MODEL` | No | Defaults to `gemini-3.6-flash` |
-| `GEMINI_SERVICE_TIER` | No | `unpaid` or `paid`; `live` mode requires `paid` |
-| `GEMINI_TIMEOUT_MS` | No | Total provider-operation budget; defaults to `30000` |
-| `COOKIE_DOMAIN` | No | Optional production refresh-cookie domain |
-| `TRUST_PROXY` | No | Express proxy-hop setting; defaults to `1` |
-| `LOG_FORMAT` | No | Morgan format; defaults to `dev` |
+| Variable | Description |
+| --- | --- |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_PUBLISHABLE_KEY` | Publishable or legacy anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend-only privileged key |
+| `FRONTEND_URL` | Allowed frontend origin, normally `http://localhost:5173` |
 
-Assessment-mode example:
+The complete optional configuration is documented in [`backend/.env.example`](backend/.env.example). The frontend defaults to `VITE_API_URL=/api/v1`, which Vite proxies to the local API.
 
-```dotenv
-NODE_ENV=development
-PORT=4000
-FRONTEND_URL=http://localhost:5173
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_PUBLISHABLE_KEY=<publishable-key>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-SUPABASE_RESUME_BUCKET=resume-files
-AI_PROCESSING_MODE=assessment
-GEMINI_SERVICE_TIER=unpaid
-GEMINI_MODEL=gemini-3.6-flash
-GEMINI_TIMEOUT_MS=30000
-TRUST_PROXY=1
-LOG_FORMAT=dev
-```
+AI features call Gemini from the backend. The default `assessment` mode disables provider calls and does not require a Gemini key; running the demo seeder supplies synthetic analysis fixtures. To enable provider calls, configure `AI_PROCESSING_MODE=live`, `GEMINI_SERVICE_TIER=paid`, and `GEMINI_API_KEY` as described in the backend environment example.
 
-Never commit `.env` files or expose the service-role and Gemini keys to the frontend.
+Never commit `.env` files or expose privileged keys to the frontend.
 
-### 4. Configure the frontend
+### 3. Apply migrations
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `VITE_API_URL` | No | API base URL; defaults to same-origin `/api/v1` |
-| `VITE_AI_PROCESSING_MODE` | No | Mirrors the backend mode so the assessment UI can explain disabled AI actions |
-
-The default same-origin path is proxied to the local API by Vite:
-
-```dotenv
-VITE_API_URL=/api/v1
-VITE_AI_PROCESSING_MODE=assessment
-```
-
-### 5. Apply the database
-
-For a local Supabase stack:
+Local Supabase:
 
 ```bash
 npx supabase start
 npx supabase db reset --local
 ```
 
-For a linked hosted development project:
+Linked development project:
 
 ```bash
 npx supabase link --project-ref <project-ref>
 npx supabase db push
 ```
 
-Do not edit an already-applied migration. Add a new migration for every schema change.
+Migration files in `supabase/migrations` are authoritative. Never modify an already-applied migration; create a new migration for each schema change.
 
-### 6. Start the applications
+### 4. Run the applications
 
-Use separate terminals from the repository root:
+Start each process from the repository root in a separate terminal:
 
 ```bash
 npm run dev:backend
@@ -265,34 +196,28 @@ npm run dev:frontend
 ```
 
 - Frontend: `http://localhost:5173`
-- API health check: `http://localhost:4000/api/v1/health`
+- API health: `http://localhost:4000/api/v1/health`
 
-## Database, migrations, and test data
+## Developer commands
 
-The SQL migration history is authoritative. The eight application tables are:
+Run all commands from the repository root.
 
-- `users`
-- `profiles`
-- `jobs`
-- `applications`
-- `resume_analyses`
-- `ai_analyses`
-- `notifications`
-- `saved_jobs`
-
-| Migration | Responsibility |
+| Command | Purpose |
 | --- | --- |
-| `20260727074835_initial_talentsync_schema.sql` | Core tables, enums, indexes, functions, triggers, grants, RLS, and private resume bucket |
-| `20260727114928_add_gemini_consent_receipt.sql` | Historical nullable consent-receipt columns; new uploads do not populate them |
-| `20260727181809_consolidate_permissive_policies.sql` | Consolidated ownership policies |
-| `20260727181844_add_candidate_onboarding_and_saved_jobs.sql` | Persisted onboarding state and candidate-owned bookmarks |
-| `20260727183057_harden_candidate_onboarding_readiness.sql` | Onboarding constraints, grants, policies, and supporting indexes |
+| `npm run dev:frontend` | Start the Vite development server |
+| `npm run dev:backend` | Start the Express development server |
+| `npm run format:check` | Check Prettier formatting |
+| `npm run lint` | Lint both workspaces |
+| `npm run typecheck` | Type-check frontend, backend, and tests |
+| `npm run test` | Run all Vitest suites |
+| `npm run build` | Build both workspaces |
+| `npm run check` | Run lint, type-check, tests, and builds |
+| `npm run seed:demo --workspace backend -- --apply` | Seed and verify the synthetic dataset |
+| `npm run reset:data --workspace backend` | Preview the guarded data reset |
 
-Every public application table has RLS enabled. The `resume-files` bucket is private, PDF-only at the API boundary, limited to 5 MiB, and accessed through authorized API routes.
+## Demo data
 
-### Seed the complete synthetic demo
-
-The known password in this README is applied only when explicitly supplied:
+Seed the full dataset with the documented demo password:
 
 ```powershell
 $env:DEMO_SEED_PASSWORD='TalentSyncDemo!2026#Login'
@@ -300,19 +225,15 @@ npm run seed:demo --workspace backend -- --apply
 Remove-Item Env:DEMO_SEED_PASSWORD
 ```
 
-Without `DEMO_SEED_PASSWORD`, the script generates strong credentials and prints them only after login and fixture verification succeeds.
+If `DEMO_SEED_PASSWORD` is omitted, the seeder generates credentials and prints them after verification.
 
-### Reset application data
-
-The guarded reset removes application rows, Auth identities, and resume objects while preserving tables, migrations, policies, functions, triggers, and bucket definitions. It refuses to run with `NODE_ENV=production`.
-
-Preview the exact target and row counts without modifying data:
+The reset command preserves migrations and database objects while removing all application rows, all Supabase Auth users, and every object in the configured resume bucket. Preview the target first:
 
 ```powershell
 npm run reset:data --workspace backend
 ```
 
-For an intentional remote development/test reset:
+For an intentional remote development or test reset:
 
 ```powershell
 $env:DATA_RESET_ALLOWED_PROJECT_REF='<project-ref>'
@@ -320,11 +241,11 @@ npm run reset:data --workspace backend -- --apply --allow-remote --confirm=RESET
 Remove-Item Env:DATA_RESET_ALLOWED_PROJECT_REF
 ```
 
-This operation is destructive. Stop the API and prevent new registrations first. Do not use it against a production project.
+The reset script rejects production mode. Treat it as destructive and never point it at a production project.
 
-## REST API overview
+## API overview
 
-All endpoints are versioned under `/api/v1`. Request bodies, path parameters, and query strings are validated with Zod where applicable.
+All endpoints are versioned under `/api/v1`. Requests are validated with Zod and responses use a consistent envelope:
 
 ```json
 {
@@ -334,187 +255,76 @@ All endpoints are versioned under `/api/v1`. Request bodies, path parameters, an
 }
 ```
 
-Errors retain the same top-level contract:
+Errors use the same envelope with `success: false` and a stable error code inside `data`.
 
-```json
-{
-  "success": false,
-  "message": "Human-readable error",
-  "data": {
-    "code": "STABLE_ERROR_CODE",
-    "errors": []
-  }
-}
-```
-
-| Group | Key operations |
+| Route group | Responsibility |
 | --- | --- |
-| `GET /health` | Public API health check |
-| `/auth` | Register, login, refresh, logout, current user |
-| `/profile` | Candidate-owned profile and recruiter-authorized applicant profile |
+| `GET /health` | Public health check |
+| `/auth` | Registration, login, refresh, logout, current user |
+| `/profile` | Candidate profile and authorized applicant profile |
 | `/onboarding` | Progress, recommendations, completion |
-| `/resume` | Candidate upload/parse and authorized private download |
-| `/jobs` | Public discovery and recruiter-owned job lifecycle |
-| `/saved-jobs` | Candidate bookmark list, save, and remove |
-| `/applications` | Apply, role-aware lists/details, status transition, withdrawal |
-| `/ai` | Match score, recruiter summary, recruiter resume feedback |
-| `/dashboard` | Candidate or recruiter dashboard selected by trusted role |
-| `/notifications` | List, mark read, mark all read, and delete |
+| `/resume` | Upload, parse, and authorized private download |
+| `/jobs` | Public discovery and recruiter job lifecycle |
+| `/saved-jobs` | Candidate bookmarks |
+| `/applications` | Apply, list, status transitions, withdrawal |
+| `/ai` | Match score, candidate summary, resume feedback |
+| `/dashboard` | Role-specific dashboards |
+| `/notifications` | List, read state, and deletion |
 
-Access tokens are sent as bearer tokens. Refresh tokens remain in secure HTTP-only cookies and are not exposed to application JavaScript.
+Access tokens use the `Authorization: Bearer <token>` header. Refresh tokens are stored in HTTP-only cookies with `Secure` enabled in production.
 
-## Free Gemini assessment mode
+## Testing and CI
 
-The assessment deployment deliberately separates the working product from unsafe use of a free AI service:
-
-| Mode | Configuration | Behavior |
-| --- | --- | --- |
-| Assessment | `AI_PROCESSING_MODE=assessment`, `GEMINI_SERVICE_TIER=unpaid` | Live candidate-data AI and resume upload/parse calls fail closed with `503 AI_ASSESSMENT_MODE`; manual onboarding, deterministic job recommendations, and seeded synthetic AI results remain usable |
-| Live | `AI_PROCESSING_MODE=live`, `GEMINI_SERVICE_TIER=paid`, valid `GEMINI_API_KEY` | Enables backend-only Gemini workflows after the operator verifies active billing and appropriate data terms |
-
-The flag is a safety gate, not proof of billing. Do not set `GEMINI_SERVICE_TIER=paid` unless the Gemini project is actually billing-enabled. Google instructs developers not to submit personal, sensitive, or confidential information to unpaid services in the [Gemini API Additional Terms](https://ai.google.dev/gemini-api/terms). Live AI uses bounded input, schema-validated structured output, a shared timeout budget, bounded retries, and `store: false`.
-
-## Testing and quality gates
-
-Run the same application checks used by CI:
+Run the complete local quality gate:
 
 ```bash
 npm run format:check
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-```
-
-Or run the combined gate:
-
-```bash
 npm run check
 ```
 
-The pre-deployment audit verified the frontend and backend test suites, linting, type checking, production builds, repository formatting, `git diff --check`, and responsive browser layouts at 360, 390, 768, 1024, 1280, and 1920 pixel widths.
+The [CI workflow](https://github.com/Vineel21/TalentSyncAI/actions/workflows/ci.yml) runs formatting, linting, type checking, tests, production builds, and a clean database rebuild from the committed Supabase migrations.
 
-The CI database job also starts local Supabase and rebuilds the schema from the committed migrations.
+## Deployment
 
-## CI/CD and deployment
+| Component | Provider | Configuration |
+| --- | --- | --- |
+| Frontend | Vercel | `vercel.json` |
+| Backend | Render | `render.yaml` |
+| Auth, database, storage | Supabase | `supabase/migrations` |
 
-### Pipeline
+Production flow:
 
-Pushes to `main` and pull requests run `.github/workflows/ci.yml`:
+1. Pushes to `main` and all pull requests run CI.
+2. After successful `main` checks, Render builds and health-checks the API from the repository configuration.
+3. A successful `main` CI run triggers `.github/workflows/deploy-production.yml`.
+4. GitHub Actions builds the Vercel artifact, deploys it, and smoke-tests the public frontend and API proxy.
 
-1. Install pinned dependencies with Node.js 22.
-2. Check formatting.
-3. Run ESLint.
-4. Type-check frontend, backend, and tests.
-5. Run Vitest suites.
-6. Build both production applications.
-7. Start local Supabase and rebuild the database from migrations.
-
-Production delivery runs only after the required CI workflow succeeds:
-
-- Render reads `render.yaml`, builds the backend, checks `/api/v1/health`, and deploys after passing GitHub checks.
-- `.github/workflows/deploy-production.yml` checks out the exact successful `main` revision, builds it with Vercel CLI, and deploys the prebuilt artifact.
-- The same workflow also exposes a manual retry trigger for credential rotation or provider recovery.
-- Vercel proxies `/api/*` to the Render service so the browser can use one public origin.
-- The deployment job smoke-checks the frontend and retries the proxied API health endpoint to accommodate a free Render cold start.
-
-### Render API
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Vineel21/TalentSyncAI)
-
-Verified service: [talentsync-api-wqk7.onrender.com](https://talentsync-api-wqk7.onrender.com/api/v1/health)
-
-The Blueprint uses the free Render web-service plan for assessment hosting. Free services can spin down while idle, so the first API request after inactivity may take longer than normal.
-
-Configure these backend values in Render:
+Render requires these secret environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `FRONTEND_URL=https://talentsync-ai-chi.vercel.app`
-- `AI_PROCESSING_MODE=assessment`
-- `GEMINI_SERVICE_TIER=unpaid`
 
-No Gemini key is needed in assessment mode. The configured Vercel domain is the verified production origin.
+GitHub Actions requires:
 
-### Vercel frontend
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
 
-Verified application: [talentsync-ai-chi.vercel.app](https://talentsync-ai-chi.vercel.app)
+For Supabase Auth, set the Site URL and allowed redirect URL to the deployed Vercel origin. Vercel proxies `/api/*` to the Render service, so browser traffic uses one public origin.
 
-Import `Vineel21/TalentSyncAI` into Vercel or allow the production GitHub Actions workflow to create the deployment from the repository root. `vercel.json` owns the workspace install, frontend build, output directory, SPA fallback, and backend proxy.
+## Security
 
-Vercel's automatic Git deployment is disabled in `vercel.json` to avoid bypassing or duplicating the GitHub Actions release.
+- Supabase Auth validates identities; trusted roles are stored in application-controlled data.
+- API middleware and PostgreSQL RLS enforce candidate and recruiter authorization.
+- Service-role and Gemini credentials remain server-only.
+- Resume files are stored privately and validated as PDFs with a 5 MiB limit.
+- Refresh sessions use HTTP-only cookies with `Secure` enabled in production.
+- Zod validation, rate limiting, Helmet, CORS, and centralized error handling protect the API boundary.
+- Demo identities are marked synthetic and should be removed or isolated before accepting real users.
 
-Configure:
+## MVP limitations
 
-- GitHub Actions secret `VERCEL_TOKEN`
-- GitHub Actions secret `VERCEL_ORG_ID`
-- GitHub Actions secret `VERCEL_PROJECT_ID`
-
-The public Render origin is declared in `vercel.json` because it is routing metadata, not a credential. Update that destination if the Render service hostname changes. The deployment workflow uses Vercel's prebuilt production flow; provider credentials are stored in GitHub or the deployment provider, never in source control.
-
-### Supabase production settings
-
-1. Apply all committed migrations to the target project.
-2. Keep `resume-files` private.
-3. Set the Supabase Auth site URL to the verified Vercel origin.
-4. Add the Vercel origin to allowed redirect URLs.
-5. Enable leaked-password protection before accepting non-demo users.
-6. Run Supabase security and performance advisors after migration changes.
-
-### Recommended deployment order
-
-1. Push the reviewed `main` branch and confirm CI is green.
-2. Apply the Supabase migrations and seed only the marked synthetic demo accounts.
-3. Create the Render service and verify `/api/v1/health`.
-4. Set `FRONTEND_URL` in Render.
-5. Confirm the Render origin in `vercel.json` and configure the three Vercel GitHub secrets.
-6. Run the production deployment workflow.
-7. Add the verified Vercel URL to Supabase Auth.
-8. Smoke-test both candidate and recruiter accounts, including authorization boundaries.
-
-The live URLs in this README were added only after both deployments and the authenticated production smoke tests succeeded.
-
-## Security model
-
-- Supabase Auth validates identities; trusted roles are stored in `public.users`.
-- Candidate/recruiter authorization is enforced by API middleware and PostgreSQL RLS.
-- Every public application table has RLS and explicit Data API grants.
-- Service-role and Gemini credentials are backend-only.
-- Refresh sessions use secure HTTP-only cookies; access tokens remain short-lived bearer tokens.
-- Helmet, strict origin-based CORS, rate limits, request-size limits, and centralized errors protect the API boundary.
-- Input and AI output are validated with Zod.
-- Resume files are checked for PDF MIME type, signature, trailer, count, and 5 MiB maximum size.
-- Stored resumes are private and downloads are candidate- or application-scoped.
-- Applications retain the submitted resume path so later profile uploads cannot silently change historical evidence.
-- AI input is bounded and treated as untrusted data; AI results must receive human review.
-- Secrets, local environment files, and generated deployment metadata are excluded from Git.
-
-Before accepting real users, publish jurisdiction-appropriate Privacy and Terms pages, enable Supabase leaked-password protection, remove or isolate demo data, and perform final production authorization tests.
-
-## Known MVP limitations
-
-- The public assessment deployment disables live AI processing because the Gemini project uses the free tier.
-- Resume-assisted onboarding and applications are demonstrated with seeded synthetic profiles. New users can complete manual onboarding, browse, and save jobs, but cannot upload the resume required for a new application while assessment mode is active.
-- Application records store the current status, not an immutable status-event timeline.
-- Candidate dashboard recommendations show recent eligible jobs; the separately ranked onboarding result is not persisted.
-- Recruiter analytics show current pipeline totals and application-created monthly cohorts, not historical stage-conversion events.
-- Password reset, social login, transactional email, interview scheduling, company pages, administrator tools, and background AI queues are post-MVP.
-- Privacy and Terms pages, browser E2E automation, tracing, production alerting, and a production accessibility audit remain release work.
-- Render's free service may have cold-start latency.
-
-## Technical-assessment mapping
-
-| Assessment requirement | Evidence |
-| --- | --- |
-| Build an AI-enabled application with business value | Candidate/recruiter job-board MVP with progressive onboarding, structured hiring workflows, analytics, and guarded Gemini integration |
-| Push code to Git | Public GitHub repository: `Vineel21/TalentSyncAI` |
-| Write CI/CD using AI | GitHub Actions validates code and migrations, then delivers the frontend after CI; Render deploys the API after checks pass |
-| Deploy using CI/CD | Vercel frontend, Render API, and Supabase data services are defined as repeatable deployment configuration |
-| Write documentation using AI | This README documents the product, architecture, setup, API, data, security, testing, demo access, and delivery process |
-
-## AI-assisted development disclosure
-
-This assessment was developed with AI assistance for requirements analysis, scaffolding, implementation, test generation, debugging, responsive review, security review, and documentation. The generated work was reviewed against the repository's architectural rules and verified with linting, type checking, automated tests, production builds, migration checks, and browser measurements.
-
-Google Gemini is also a runtime integration, but the public assessment deployment does not send candidate data to the free service. Seeded AI records are deterministic synthetic fixtures. A human remains accountable for code acceptance, deployment credentials, production configuration, and every hiring decision.
+- The public demo uses seeded AI output; live Gemini processing is disabled until live provider configuration is supplied.
+- Application records store the current status rather than a complete status-event history.
+- Password reset, social login, interview scheduling, administrator tools, background jobs, and production alerting are outside the current MVP.
