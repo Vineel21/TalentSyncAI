@@ -86,15 +86,23 @@ jobs:
             "$DEPLOYMENT_URL" > /dev/null
 
           for attempt in {1..12}; do
-            if health_response="$(
-              curl --fail --silent --show-error --location --max-time 30 \
-                "$DEPLOYMENT_URL/api/v1/health"
-            )" && HEALTH_RESPONSE="$health_response" node -e "
-              const response = JSON.parse(process.env.HEALTH_RESPONSE);
-              if (response.success !== true || response.data?.status !== 'ok') {
-                process.exit(1);
-              }
-            "; then
+            if curl --fail --silent --show-error --location --max-time 30 \
+              "$DEPLOYMENT_URL/api/v1/health" |
+              node -e "
+                let body = '';
+                process.stdin.setEncoding('utf8');
+                process.stdin.on('data', (chunk) => { body += chunk; });
+                process.stdin.on('end', () => {
+                  try {
+                    const response = JSON.parse(body);
+                    if (response.success !== true || response.data?.status !== 'ok') {
+                      process.exit(1);
+                    }
+                  } catch {
+                    process.exit(1);
+                  }
+                });
+              "; then
               exit 0
             fi
 

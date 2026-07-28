@@ -10,8 +10,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "${BACKEND_URL}/api/$1",
-      "env": ["BACKEND_URL"],
+      "dest": "https://talentsync-api.onrender.com/api/$1",
       "respectOriginCacheControl": false,
       "headers": {
         "Cache-Control": "no-store",

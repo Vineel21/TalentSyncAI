@@ -432,12 +432,11 @@ Vercel's automatic Git deployment is disabled in `vercel.json` to avoid bypassin
 
 Configure:
 
-- Vercel project environment variable `BACKEND_URL` - the verified Render service origin, without `/api/v1`
 - GitHub Actions secret `VERCEL_TOKEN`
 - GitHub Actions secret `VERCEL_ORG_ID`
 - GitHub Actions secret `VERCEL_PROJECT_ID`
 
-The deployment workflow uses Vercel's prebuilt production flow; provider credentials are stored in GitHub or the deployment provider, never in source control.
+The public Render origin is declared in `vercel.json` because it is routing metadata, not a credential. Update that destination if the Render service hostname changes. The deployment workflow uses Vercel's prebuilt production flow; provider credentials are stored in GitHub or the deployment provider, never in source control.
 
 ### Supabase production settings
 
@@ -454,7 +453,7 @@ The deployment workflow uses Vercel's prebuilt production flow; provider credent
 2. Apply the Supabase migrations and seed only the marked synthetic demo accounts.
 3. Create the Render service and verify `/api/v1/health`.
 4. Set `FRONTEND_URL` in Render.
-5. Configure `BACKEND_URL` and the three Vercel GitHub secrets.
+5. Confirm the Render origin in `vercel.json` and configure the three Vercel GitHub secrets.
 6. Run the production deployment workflow.
 7. Add the verified Vercel URL to Supabase Auth.
 8. Smoke-test both candidate and recruiter accounts, including authorization boundaries.
