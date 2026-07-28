@@ -10,7 +10,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://talentsync-api.onrender.com/api/$1",
+      "dest": "https://talentsync-api-wqk7.onrender.com/api/$1",
       "respectOriginCacheControl": false,
       "headers": {
         "Cache-Control": "no-store",
